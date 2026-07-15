@@ -1,0 +1,32 @@
+{
+  "fct_orders": {
+    "urn": "urn:li:dataset:(urn:li:dataPlatform:bigquery,dig-demo-sandbox.fiction_retail.fct_orders,PROD)",
+    "schema": [
+      {"name": "order_id", "type": "STRING"},
+      {"name": "customer_id", "type": "STRING"},
+      {"name": "country", "type": "STRING"},
+      {"name": "order_date", "type": "DATE"},
+      {"name": "order_status", "type": "STRING"},
+      {"name": "order_total", "type": "NUMERIC"},
+      {"name": "currency", "type": "STRING"},
+      {"name": "is_fulfilled", "type": "BOOLEAN"}
+    ],
+    "assertions": [
+      {"urn": "urn:li:assertion:fct_orders.unique_order_id", "type": "DATASET", "description": "unique(order_id) — from dbt test, ingested via run_results"},
+      {"urn": "urn:li:assertion:fct_orders.not_null_order_id", "type": "DATASET", "description": "not_null(order_id) — from dbt test, ingested via run_results"}
+    ]
+  },
+  "revenue_daily": {
+    "urn": "urn:li:dataset:(urn:li:dataPlatform:bigquery,dig-demo-sandbox.fiction_retail.revenue_daily,PROD)",
+    "schema": [
+      {"name": "order_date", "type": "DATE"},
+      {"name": "order_count", "type": "INT64"},
+      {"name": "gross_revenue", "type": "NUMERIC"},
+      {"name": "avg_order_value", "type": "NUMERIC"}
+    ],
+    "assertions": [
+      {"urn": "urn:li:assertion:revenue_daily.unique_order_date", "type": "DATASET", "description": "unique(order_date) — from dbt test, ingested via run_results"},
+      {"urn": "urn:li:assertion:revenue_daily.not_null_order_date", "type": "DATASET", "description": "not_null(order_date) — from dbt test, ingested via run_results"}
+    ]
+  }
+}

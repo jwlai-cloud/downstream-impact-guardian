@@ -1,0 +1,9 @@
+{
+  "fct_orders": [
+    {"sql": "SELECT order_date, SUM(order_total) AS revenue\nFROM `dig-demo-sandbox.fiction_retail.fct_orders`\nWHERE order_status = 'completed'\nGROUP BY order_date", "user": "finance-scheduled-queries@dig-demo-sandbox.iam", "platform": "bigquery scheduled query", "run_count": 92},
+    {"sql": "SELECT customer_id, AVG(order_total) AS aov\nFROM `dig-demo-sandbox.fiction_retail.fct_orders`\nGROUP BY customer_id", "user": "analyst@example.com", "platform": "bigquery console", "run_count": 14}
+  ],
+  "revenue_daily": [
+    {"sql": "SELECT order_date, gross_revenue\nFROM `dig-demo-sandbox.fiction_retail.revenue_daily`\nORDER BY order_date DESC LIMIT 90", "user": "looker-pdt-service@dig-demo-sandbox.iam", "platform": "looker", "run_count": 240}
+  ]
+}

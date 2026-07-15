@@ -1,0 +1,11 @@
+{
+  "fct_orders": [
+    {"name": "revenue_daily", "platform": "bigquery", "entity_type": "dataset", "urn": "urn:li:dataset:(urn:li:dataPlatform:bigquery,dig-demo-sandbox.fiction_retail.revenue_daily,PROD)", "hops": 1, "detail": "same repo, downstream dbt model"},
+    {"name": "marketing.customer_ltv", "platform": "bigquery", "entity_type": "dataset", "urn": "urn:li:dataset:(urn:li:dataPlatform:bigquery,dig-demo-sandbox.marketing.customer_ltv,PROD)", "hops": 1, "detail": "marketing team's LTV feature table — different repo, different team"},
+    {"name": "Finance KPIs", "platform": "looker", "entity_type": "dashboard", "urn": "urn:li:dashboard:(looker,finance_kpis)", "hops": 2, "detail": "board-level finance dashboard"}
+  ],
+  "revenue_daily": [
+    {"name": "Finance KPIs", "platform": "looker", "entity_type": "dashboard", "urn": "urn:li:dashboard:(looker,finance_kpis)", "hops": 1, "detail": "Gross Revenue tile reads this table directly"},
+    {"name": "Monthly Board Pack", "platform": "looker", "entity_type": "dashboard", "urn": "urn:li:dashboard:(looker,board_pack)", "hops": 1, "detail": "reported to the board monthly"}
+  ]
+}

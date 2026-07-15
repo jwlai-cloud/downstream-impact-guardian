@@ -1,0 +1,10 @@
+{
+  "Gross Revenue": {
+    "urn": "urn:li:glossaryTerm:CommerceMetrics.GrossRevenue",
+    "definition": "Sum of order_total over all non-cancelled orders in the period, refunds included. Refunds are netted out downstream in net revenue, never here."
+  },
+  "Active Customer": {
+    "urn": "urn:li:glossaryTerm:CommerceMetrics.ActiveCustomer",
+    "definition": "A customer with at least one non-cancelled order in the trailing 90 days."
+  }
+}
