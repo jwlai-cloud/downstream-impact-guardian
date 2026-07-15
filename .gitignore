@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# dbt
+dbt_demo_project/target/
+dbt_demo_project/dbt_packages/
+dbt_demo_project/logs/
+
+# secrets — never commit these
+.env
+*.pem
+service-account*.json
+
+# OS
+.DS_Store

@@ -1,0 +1,50 @@
+name: downstream-impact-guardian
+
+# Core loop trigger. See docs/SPEC.md section 7 for why this is the primary
+# interface (not a chat UI).
+on:
+  pull_request:
+    types: [opened, synchronize]
+    paths:
+      - "dbt_demo_project/**"
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write   # needed to post the PR comment
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # need history for dbt state:modified comparison
+
+      # TODO: set up dbt (probably dbt-bigquery, matching docs/SPEC.md #4)
+      # - name: Set up dbt
+      #   run: pip install dbt-bigquery
+
+      # TODO: run state:modified against last-known-good manifest to get the
+      # logic/schema diff. Where does the "last known good" manifest live?
+      # (artifact from previous main-branch run? stored in the repo? GCS?)
+      # - name: dbt state comparison
+      #   run: dbt build --select state:modified+ --state ./prod-manifest
+
+      # TODO: run the agent. This is the actual core logic:
+      #   1. read dbt's state:modified output
+      #   2. query DataHub (read-only) for lineage + query history on the
+      #      REAL current table (never the PR's hypothetical state — see
+      #      docs/SPEC.md #9 / CLAUDE.md)
+      #   3. query DataHub for glossary term version diffs if relevant
+      #   4. propose a Data Contract back to DataHub (writeback #1)
+      #   5. generate compatibility SQL/dbt macro + tests
+      #   6. post PR comment (writeback #2), referencing the contract from
+      #      step 4
+      # - name: Run Downstream Impact Guardian
+      #   env:
+      #     DATAHUB_GMS_URL: ${{ secrets.DATAHUB_GMS_URL }}
+      #     DATAHUB_GMS_TOKEN: ${{ secrets.DATAHUB_GMS_TOKEN }}
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      #   run: python agent/main.py --pr-number ${{ github.event.pull_request.number }}
+
+      - name: placeholder
+        run: echo "workflow skeleton — fill in the steps above"
