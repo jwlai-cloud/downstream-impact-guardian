@@ -1,7 +1,17 @@
 # Architecture
 
-One PR-triggered pipeline, two writebacks. Design rationale in
-`SPEC.md`; decisions in `adr/`.
+One PR-triggered pipeline, two writebacks, three surfaces. Design
+rationale in `SPEC.md`; decisions in `adr/`.
+
+## How DataHub is used (integration matrix)
+
+| DataHub piece | Where | Why this path |
+|---|---|---|
+| **Agent Context Kit** (`build_google_adk_tools`, read-only) | ADK narrative agent, live mode | Track 1's named integration; full read surface (lineage, queries, assertions, schema, search) in-process |
+| **MCP Server** (`mcp-server-datahub`) | Interactive surface: `.mcp.json` for judges/devs pointing their own agents at the catalog | MCP is the right transport for external agents; redundant inside the CI process (ACK covers it) |
+| **GraphQL** (direct) | Deterministic pipeline reads + `upsertDataContract` writeback | Needs no LLM; covers what the Kit doesn't expose (contract upsert, sibling-aware assertion lookup) |
+| **Ingestion** (dbt + business-glossary sources) | One-time prep, `scripts/ingest_all.sh` | dbt tests → assertions (contract backing); glossary versions (semantic drift baseline) |
+| **SDK aspect emission** | Contract status stamping + fallback | `dataContractStatus` state=PENDING + provenance |
 
 ```mermaid
 flowchart LR
@@ -73,13 +83,22 @@ flowchart LR
 | Narrative | ADK + Gemini, deterministic fallback | deterministic |
 | PR comment | posted/updated | rendered; step summary always written |
 
-## Judge path
+## Judge paths (two)
 
-Open a PR from `demo/breaking-change` → `master` in this repo (read access
-suffices; no fork). The branch stages one schema break, one silent metric
-redefinition, one glossary drift. Repo-internal CI is green — only the
-cross-system context in DataHub reveals the breakage. That asymmetry is the
-whole pitch.
+1. **Watch the bot work**: open a PR from `demo/breaking-change` → `master`
+   in this repo (read access suffices; no fork). The branch stages one
+   schema break, one silent metric redefinition, one glossary drift.
+   Repo-internal CI is green — only the cross-system context in DataHub
+   reveals the breakage. That asymmetry is the whole pitch.
+2. **Bring your own agent**: point Claude/Cursor at the demo catalog via
+   `mcp-server-datahub` (`.mcp.json` ships preconfigured) and interrogate
+   the same lineage, glossary, and PROPOSED contract the guardian used.
+
+## Adoption (any dbt repo)
+
+`action.yml` packages the whole pipeline as a composite GitHub Action —
+one `uses:` block, secrets for DataHub/Gemini, no hosting anywhere (the
+consumer's runner is the compute). This repo dogfoods its own action.
 
 ## Deliberate limitations (honest list)
 

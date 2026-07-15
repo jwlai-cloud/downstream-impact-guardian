@@ -10,7 +10,7 @@
 #   GCP_PROJECT          default agent-era
 #   BQ_DATASET           default fiction_retail
 #   BQ_ACCOUNT           gcloud account to mint a BigQuery token for
-#                        (default junwei.lai@gmail.com); uses the dbt
+#                        (default: the active gcloud account); uses the dbt
 #                        'token' target so your ADC stays untouched
 #
 # Prereqs on the machine running this: dbt-bigquery + acryl-datahub[dbt]
@@ -22,7 +22,7 @@ cd "$(dirname "$0")/.."
 export DATAHUB_GMS_TOKEN="${DATAHUB_GMS_TOKEN:-}"
 export GCP_PROJECT="${GCP_PROJECT:-agent-era}"
 export BQ_DATASET="${BQ_DATASET:-fiction_retail}"
-BQ_ACCOUNT="${BQ_ACCOUNT:-junwei.lai@gmail.com}"
+BQ_ACCOUNT="${BQ_ACCOUNT:-$(gcloud config get-value account 2>/dev/null)}"
 
 echo "==> BigQuery build in ${GCP_PROJECT}.${BQ_DATASET} (as ${BQ_ACCOUNT})"
 export BQ_ACCESS_TOKEN
