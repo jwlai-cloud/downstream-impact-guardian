@@ -86,6 +86,22 @@ The Action fires, and the guardian posts its full report as a PR comment.
 Can't open a PR? The exact same generated output is committed in
 [`examples/generated/`](examples/generated/).
 
+**Second test path — bring your own agent.** The demo catalog speaks
+[DataHub MCP](https://docs.datahub.com/docs/features/feature-guides/mcp):
+point Claude Code / Claude Desktop / Cursor at it and interrogate the
+lineage, glossary, and the guardian's PROPOSED Data Contract yourself:
+
+```jsonc
+// .mcp.json (this repo ships one preconfigured for local quickstart)
+{ "mcpServers": { "datahub": {
+    "command": "uvx", "args": ["mcp-server-datahub"],
+    "env": { "DATAHUB_GMS_URL": "http://<demo-instance>:8080",
+             "DATAHUB_GMS_TOKEN": "<token from submission notes>" } } } }
+```
+
+Ask it "who breaks if fct_orders drops order_total?" — same context graph
+the guardian reads in CI.
+
 ## Status
 
 Core loop complete and tested (21 tests, no network needed):
