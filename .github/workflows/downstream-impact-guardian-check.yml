@@ -1,10 +1,10 @@
 name: downstream-impact-guardian
 
-# Core loop trigger. See docs/SPEC.md section 7 for why this is the primary
-# interface (not a chat UI). Judge path: open a PR from the pre-made demo/*
-# branch to master IN THIS REPO (no fork needed) — fork PRs get no secrets
-# and degrade to offline fixture mode (ADR-0007), still producing the full
-# report in the step summary.
+# Core loop trigger (docs/SPEC.md §7). This repo dogfoods its own composite
+# action (./action.yml) — the same `uses:` block works from ANY dbt repo as
+# junwei-lai/downstream-impact-guardian@v1. Judge path: open a PR from the
+# pre-made demo/* branch to master IN THIS REPO (no fork needed); fork PRs
+# get no secrets and degrade to offline fixture mode (ADR-0007).
 on:
   pull_request:
     types: [opened, synchronize]
@@ -20,44 +20,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
+      - name: Downstream Impact Guardian
+        uses: ./
         with:
-          python-version: "3.11"
-          cache: pip
-
-      - name: Install dependencies
-        env:
-          DATAHUB_GMS_URL: ${{ secrets.DATAHUB_GMS_URL }}
-        run: |
-          pip install -r agent/requirements.txt dbt-bigquery
-          # live-mode extras (ADK narrative, DataHub SDK) only when the
-          # run can actually reach DataHub
-          if [ -n "$DATAHUB_GMS_URL" ]; then
-            pip install -r agent/requirements-live.txt
-          fi
-
-      # Produce the PR's manifest. `dbt parse` opens no warehouse
-      # connection — the committed env-var-driven profile is enough.
-      # The prod-side manifest is committed at prod_state/ (ADR-0006).
-      - name: Parse PR dbt state
-        working-directory: dbt_demo_project
-        env:
-          DBT_PROFILES_DIR: "."
-        run: dbt parse --no-partial-parse
-
-      # The core loop: detect -> blast radius (DataHub, live state only) ->
-      # Data Contract writeback -> compat codegen -> PR comment writeback.
-      # Missing secrets => offline fixture mode, never a hard fail.
-      - name: Run Downstream Impact Guardian
-        env:
-          DATAHUB_GMS_URL: ${{ secrets.DATAHUB_GMS_URL }}
-          DATAHUB_GMS_TOKEN: ${{ secrets.DATAHUB_GMS_TOKEN }}
-          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
-          GCP_PROJECT: ${{ vars.GCP_PROJECT }}
-          BQ_DATASET: ${{ vars.BQ_DATASET }}
-        run: python agent/main.py --pr-number ${{ github.event.pull_request.number }}
+          dbt-project-dir: dbt_demo_project
+          datahub-url: ${{ secrets.DATAHUB_GMS_URL }}
+          datahub-token: ${{ secrets.DATAHUB_GMS_TOKEN }}
+          google-api-key: ${{ secrets.GOOGLE_API_KEY }}
+          warehouse-project: ${{ vars.GCP_PROJECT }}
+          warehouse-dataset: ${{ vars.BQ_DATASET }}
 
       - name: Upload generated artifacts
         if: always()

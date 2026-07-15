@@ -24,20 +24,40 @@ Do not restate the raw data; interpret it."""
 
 
 def build_tools(reader):
-    def get_downstream_consumers(model_name: str) -> list[dict]:
-        """List downstream consumers of a dbt model from DataHub lineage."""
-        return [vars(c) for c in reader.get_downstream(model_name)]
-
+    """DataHub read tools for the narrative agent. Primary path: the
+    first-party Agent Context Kit (Track 1's named integration). Local
+    wrappers fill in what the Kit doesn't cover (observed query usage) and
+    stand in entirely if the Kit can't initialize."""
     def get_observed_queries(model_name: str) -> list[dict]:
         """List recent real-world queries DataHub observed on a model."""
         return [vars(q) for q in reader.get_queries(model_name)]
 
-    def get_glossary_definition(term_name: str) -> dict:
-        """Get the current live business definition of a glossary term."""
-        return reader.get_glossary_term(term_name) or {}
+    try:
+        from datahub.sdk.main_client import DataHubClient
+        from datahub_agent_context.google_adk_tools import \
+            build_google_adk_tools
 
-    return [get_downstream_consumers, get_observed_queries,
-            get_glossary_definition]
+        client = DataHubClient.from_env()
+        # read-only on purpose: writebacks are deterministic pipeline steps,
+        # never LLM tool calls (ADR-0002). The Kit covers lineage, queries,
+        # assertions, schema fields, and search — the full read surface.
+        tools = build_google_adk_tools(client, include_mutations=False)
+        print("[guardian] narrative tools: DataHub Agent Context Kit")
+        return tools
+    except Exception as exc:
+        print(f"[guardian] Agent Context Kit unavailable ({exc}); "
+              "using local read tools")
+
+        def get_downstream_consumers(model_name: str) -> list[dict]:
+            """List downstream consumers of a dbt model from DataHub lineage."""
+            return [vars(c) for c in reader.get_downstream(model_name)]
+
+        def get_glossary_definition(term_name: str) -> dict:
+            """Get the current live business definition of a glossary term."""
+            return reader.get_glossary_term(term_name) or {}
+
+        return [get_downstream_consumers, get_glossary_definition,
+                get_observed_queries]
 
 
 async def _run(report: ImpactReport, reader) -> str:

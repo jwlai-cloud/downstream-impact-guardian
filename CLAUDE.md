@@ -127,6 +127,19 @@ Additional decisions from the same session:
   executes against the warehouse, which CI neither needs nor can do without
   creds. dbt's state:modified mechanism is kept; the execution isn't.
 
+## Distribution shape (decided 2026-07-15, session 2)
+
+- **The agent is a reusable composite GitHub Action** (`action.yml` at repo
+  root) — any dbt repo adopts it with one `uses:` block; this repo dogfoods
+  its own action. No hosted agent, ever: the consumer's Action runner is
+  the compute (ADR-0008). Feeds the "Real-World Usefulness" judging
+  criterion directly.
+- **Live reads for the ADK narrative agent go through the DataHub Agent
+  Context Kit** (`datahub-agent-context[google-adk]`,
+  `build_google_adk_tools`, mutations off) — Track 1's named integration
+  path. Deterministic pipeline keeps direct GraphQL where the Kit has no
+  equivalent: contract upsert, sibling-aware assertion lookup.
+
 ## Domain language
 
 `CONTEXT.md` at the repo root is the glossary (ubiquitous language):

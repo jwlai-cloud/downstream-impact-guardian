@@ -19,6 +19,7 @@ class Config:
     github_repository: str      # "owner/repo"
     bq_project: str
     bq_dataset: str
+    datahub_platform: str       # warehouse platform in DataHub urns
     mode: str                   # "live" | "offline"
 
     @classmethod
@@ -38,11 +39,13 @@ class Config:
             # `or` (not get() default): Actions passes unset vars as ""
             bq_project=os.environ.get("GCP_PROJECT") or "agent-era",
             bq_dataset=os.environ.get("BQ_DATASET") or "fiction_retail",
+            datahub_platform=os.environ.get("DATAHUB_PLATFORM") or "bigquery",
             mode=mode,
         )
 
-    def dataset_urn(self, model_name: str, platform: str = "bigquery") -> str:
+    def dataset_urn(self, model_name: str, platform: str | None = None) -> str:
         # dbt ingestion creates sibling entities on both platforms; some
         # aspects (e.g. test assertions) land on the dbt sibling only
         fqn = f"{self.bq_project}.{self.bq_dataset}.{model_name}"
+        platform = platform or self.datahub_platform
         return f"urn:li:dataset:(urn:li:dataPlatform:{platform},{fqn},PROD)"

@@ -1,4 +1,6 @@
-# Live mode extras: ADK narrative + DataHub SDK fallback for contract
-# emission. Installed by the workflow only when secrets are present.
+# Live mode extras: ADK narrative with first-party DataHub tools + SDK
+# fallback for contract emission. Installed by the action only when a
+# DataHub URL is configured.
 google-adk>=1.0
 acryl-datahub>=0.13
+datahub-agent-context[google-adk]

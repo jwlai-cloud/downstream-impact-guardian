@@ -49,14 +49,15 @@ flowchart LR
 
 | Path | Role |
 |---|---|
-| `.github/workflows/downstream-impact-guardian-check.yml` | Trigger: `pull_request` touching `dbt_demo_project/**`. Installs deps, `dbt parse`, runs the agent. Fork-safe (ADR-0007). |
+| `action.yml` | **Reusable composite action** — any dbt repo adopts the guardian with one `uses:` block (inputs: dbt project dir, DataHub URL/token, warehouse coords, platform, strict). No hosting: runs on the consumer's Action runner. |
+| `.github/workflows/downstream-impact-guardian-check.yml` | This repo dogfooding its own action on PRs touching `dbt_demo_project/**`. Fork-safe (ADR-0007). |
 | `agent/main.py` | Orchestrates steps 1–6; CLI contract `--pr-number N`; exit 0 unless `--strict` |
 | `agent/dbt_state.py` | Detection #1/#2: committed prod manifest (ADR-0006) vs PR manifest — column diff, rename heuristic, normalized-SQL logic diff. Detection #3: PR glossary yml vs live DataHub terms |
 | `agent/datahub_client.py` | `LiveDataHubClient` (GraphQL) / `FixtureDataHubClient` (committed JSON), same protocol |
 | `agent/blast_radius.py` | Lineage + query cross-reference; inspectable additive scoring → LOW/MEDIUM/HIGH/CRITICAL |
 | `agent/contract.py` | Writeback 1: upsert → SDK-emission fallback, PROPOSED provenance (ADR-0003) |
 | `agent/codegen.py` | Writeback 2 payload: deterministic `*_compat` / `*_legacy` views, live schema as the old-shape authority, `requires_human` flag for unmappable cases |
-| `agent/adk_agent.py` | Google ADK `Agent` (gemini-flash-latest) with read-only DataHub tools; narrative only |
+| `agent/adk_agent.py` | Google ADK `Agent` (gemini-flash-latest); tools from the first-party **DataHub Agent Context Kit** (`build_google_adk_tools`, read-only) plus a local observed-queries tool; local wrappers as fallback. Narrative only |
 | `agent/pr_comment.py` | Renders + posts one idempotent comment (HTML marker), mirrors to `$GITHUB_STEP_SUMMARY` |
 | `dbt_demo_project/` | fiction-retail: seeds → staging → `fct_orders` → `revenue_daily`; glossary + ingestion recipes (ADR-0001, ADR-0005) |
 | `examples/generated/` | Real output of a run against `demo/breaking-change` |

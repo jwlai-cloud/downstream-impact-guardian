@@ -203,7 +203,7 @@ class LiveDataHubClient:
         # dbt test assertions attach to the DBT sibling, not the warehouse
         # entity (verified against OSS quickstart 2026-07-15) — query both.
         merged: dict[str, dict] = {}
-        for platform in ("bigquery", "dbt"):
+        for platform in (self.config.datahub_platform, "dbt"):
             urn = self.config.dataset_urn(model_name, platform=platform)
             data = self.graphql(
                 """query assertions($urn: String!) {

@@ -40,6 +40,42 @@ first place, and who else in the organization is quietly depending on the old
 shape. The value here is in *knowing what to generate*, not the generation
 itself.
 
+## Use it in your own dbt repo
+
+The guardian is a reusable composite GitHub Action — no hosting, it runs on
+your repo's Action runner on every PR:
+
+```yaml
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  guardian:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: junwei-lai/downstream-impact-guardian@master
+        with:
+          dbt-project-dir: transforms          # your dbt project path
+          datahub-url: ${{ secrets.DATAHUB_GMS_URL }}
+          datahub-token: ${{ secrets.DATAHUB_GMS_TOKEN }}
+          google-api-key: ${{ secrets.GOOGLE_API_KEY }}   # optional narrative
+          warehouse-project: my-gcp-project
+          warehouse-dataset: analytics
+```
+
+Requirements in your repo: a parse-able `profiles.yml` in the dbt project
+dir, a committed last-known-production manifest at
+`<dbt-project-dir>/prod_state/manifest.json`, and (optionally) a
+`datahub/business_glossary.yml` for semantic-drift detection. All inputs in
+[`action.yml`](action.yml). This repo consumes its own action — the demo
+workflow is the reference integration.
+
 ## Try it (judges)
 
 Open a PR from the pre-made [`demo/breaking-change`](../../compare/master...demo/breaking-change)

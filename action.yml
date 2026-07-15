@@ -1,0 +1,113 @@
+name: "Downstream Impact Guardian"
+description: >
+  On every dbt PR: detects breaking schema/logic/semantic changes, assesses
+  real cross-system blast radius via DataHub lineage, proposes a Data
+  Contract back into DataHub, and posts a PR comment with mergeable
+  compatibility code. Runs entirely on the Action runner — no hosting.
+author: junwei-lai
+branding:
+  icon: shield
+  color: green
+
+inputs:
+  dbt-project-dir:
+    description: Path to the dbt project in your repo
+    required: true
+  prod-manifest:
+    description: >
+      Last-known-production manifest.json. Default:
+      <dbt-project-dir>/prod_state/manifest.json
+    default: ""
+  glossary-file:
+    description: >
+      DataHub business glossary yml tracked in your repo. Default:
+      <dbt-project-dir>/datahub/business_glossary.yml
+    default: ""
+  pr-number:
+    description: Pull request number
+    default: ${{ github.event.pull_request.number }}
+  datahub-url:
+    description: DataHub GMS URL. Empty = offline fixture mode.
+    default: ""
+  datahub-token:
+    description: DataHub access token (required if GMS auth is enabled)
+    default: ""
+  google-api-key:
+    description: Gemini API key for the ADK narrative agent (optional)
+    default: ""
+  github-token:
+    description: Token used to post the PR comment
+    default: ${{ github.token }}
+  dbt-adapter:
+    description: dbt adapter package to install
+    default: dbt-bigquery
+  datahub-platform:
+    description: Warehouse platform in your DataHub urns
+    default: bigquery
+  warehouse-project:
+    description: Warehouse project/database in your DataHub urns (GCP_PROJECT)
+    default: ""
+  warehouse-dataset:
+    description: Warehouse dataset/schema in your DataHub urns (BQ_DATASET)
+    default: ""
+  output-dir:
+    description: Where generated artifacts are written
+    default: .dig_output
+  strict:
+    description: Fail the check on HIGH/CRITICAL severity ("true"/"false")
+    default: "false"
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-python@v5
+      with:
+        python-version: "3.11"
+        cache: pip
+
+    - name: Install guardian
+      shell: bash
+      env:
+        DATAHUB_GMS_URL: ${{ inputs.datahub-url }}
+      run: |
+        pip install -q -r "${{ github.action_path }}/agent/requirements.txt" "${{ inputs.dbt-adapter }}"
+        if [ -n "$DATAHUB_GMS_URL" ]; then
+          pip install -q -r "${{ github.action_path }}/agent/requirements-live.txt"
+        fi
+
+    # `dbt parse` opens no warehouse connection; the consuming repo needs a
+    # parse-able profiles.yml in the dbt project dir (env-driven is fine).
+    - name: Parse PR dbt state
+      shell: bash
+      working-directory: ${{ inputs.dbt-project-dir }}
+      env:
+        DBT_PROFILES_DIR: "."
+        GCP_PROJECT: ${{ inputs.warehouse-project }}
+        BQ_DATASET: ${{ inputs.warehouse-dataset }}
+      run: dbt parse --no-partial-parse
+
+    - name: Run Downstream Impact Guardian
+      shell: bash
+      env:
+        DATAHUB_GMS_URL: ${{ inputs.datahub-url }}
+        DATAHUB_GMS_TOKEN: ${{ inputs.datahub-token }}
+        GOOGLE_API_KEY: ${{ inputs.google-api-key }}
+        GITHUB_TOKEN: ${{ inputs.github-token }}
+        GCP_PROJECT: ${{ inputs.warehouse-project }}
+        BQ_DATASET: ${{ inputs.warehouse-dataset }}
+        DATAHUB_PLATFORM: ${{ inputs.datahub-platform }}
+      run: |
+        DIR="${{ inputs.dbt-project-dir }}"
+        PROD="${{ inputs.prod-manifest }}"
+        [ -z "$PROD" ] && PROD="$DIR/prod_state/manifest.json"
+        GLOSS="${{ inputs.glossary-file }}"
+        [ -z "$GLOSS" ] && GLOSS="$DIR/datahub/business_glossary.yml"
+        STRICT=""
+        [ "${{ inputs.strict }}" = "true" ] && STRICT="--strict"
+        python "${{ github.action_path }}/agent/main.py" \
+          --pr-number "${{ inputs.pr-number }}" \
+          --prod-manifest "$PROD" \
+          --pr-manifest "$DIR/target/manifest.json" \
+          --glossary "$GLOSS" \
+          --output-dir "${{ inputs.output-dir }}" \
+          $STRICT
