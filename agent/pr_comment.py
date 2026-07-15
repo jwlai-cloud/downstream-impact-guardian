@@ -14,7 +14,7 @@ MARKER = "<!-- downstream-impact-guardian -->"
 SEVERITY_EMOJI = {"LOW": "🟢", "MEDIUM": "🟡", "HIGH": "🟠", "CRITICAL": "🔴"}
 
 
-def render(report: ImpactReport, contract: ContractResult,
+def render(report: ImpactReport, contracts: list[ContractResult],
            artifacts: list[CompatArtifact], mode: str) -> str:
     lines = [MARKER, ""]
     lines.append(f"## {SEVERITY_EMOJI[report.severity]} Downstream Impact "
@@ -81,28 +81,43 @@ def render(report: ImpactReport, contract: ContractResult,
             lines += [f"**on `{model}`**{who}{src}:", "```sql",
                       q.sql.strip(), "```", ""]
 
-    if report.glossary_changes:
+    if report.glossary_changes or report.suspected_drifts:
         lines += ["### Semantic drift (DataHub glossary)", ""]
         for g in report.glossary_changes:
             lines += [f"**{g.term_name}**",
                       f"- DataHub (current business meaning): "
                       f"{g.live_definition}",
                       f"- This PR proposes: {g.proposed_definition}", ""]
+        for s in (report.suspected_drifts or []):
+            lines += [f"**{s.term_name}** — ⚠️ suspected",
+                      f"- `{s.model_name}.{s.column}` is bound to this term "
+                      f"and its logic changed, but this PR does not update "
+                      f"the term's definition.",
+                      f"- DataHub (current business meaning): "
+                      f"{s.live_definition}",
+                      f"- Verify the definition still holds — or update the "
+                      f"glossary in this PR.", ""]
 
-    lines += ["### Writeback 1 — Data Contract in DataHub", ""]
-    if contract.urn:
-        lines.append(f"{'✅' if contract.mode == 'upserted' else '☑️'} "
-                     f"Contract `{contract.urn}` written ({contract.mode}), "
-                     f"status **PROPOSED** — approving it = merging this PR "
-                     f"after adopting the compatibility code.")
-    else:
-        lines.append(f"ℹ️ {contract.note}")
-        lines += ["", "<details><summary>Contract payload the agent "
-                  "submits</summary>", "", "```json",
-                  json.dumps(contract.payload, indent=2), "```",
-                  "</details>", ""]
-    if contract.note and contract.urn:
-        lines.append(f"> {contract.note}")
+    lines += ["### Writeback 1 — Data Contracts in DataHub", ""]
+    if not contracts:
+        lines.append("ℹ️ No impacted model with known consumers — no "
+                     "contract proposed.")
+    for contract in contracts:
+        prefix = f"**`{contract.model_name}`** — " if contract.model_name else ""
+        if contract.urn:
+            lines.append(f"{'✅' if contract.mode == 'upserted' else '☑️'} "
+                         f"{prefix}contract `{contract.urn}` written "
+                         f"({contract.mode}), status **PROPOSED** — "
+                         f"approving it = merging this PR after adopting "
+                         f"the compatibility code.")
+            if contract.note:
+                lines.append(f"> {contract.note}")
+        else:
+            lines.append(f"ℹ️ {prefix}{contract.note}")
+            lines += ["", f"<details><summary>Contract payload for "
+                      f"`{contract.model_name}`</summary>", "", "```json",
+                      json.dumps(contract.payload, indent=2), "```",
+                      "</details>", ""]
     lines.append("")
 
     if artifacts:

@@ -15,3 +15,4 @@ three-source detection, dual writeback, PR-bot interface) lives in
 | [0006](0006-committed-prod-manifest.md) | Prod dbt manifest committed to the repo |
 | [0007](0007-offline-fixture-mode.md) | Offline fixture mode as a first-class agent mode |
 | [0008](0008-agent-runs-in-action.md) | Agent executes inside the Action runner, not Cloud Run |
+| [0009](0009-contract-per-impacted-model.md) | One Data Contract per impacted model |

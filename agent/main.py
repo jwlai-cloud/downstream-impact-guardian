@@ -53,8 +53,11 @@ def run(args) -> int:
     if not model_changes and not glossary_changes:
         print("[guardian] no impactful changes detected — done")
         return 0
+    suspected = dbt_state.find_suspected_drifts(pr, model_changes,
+                                                glossary_changes, reader)
     print(f"[guardian] {len(model_changes)} model change(s), "
-          f"{len(glossary_changes)} glossary drift(s)")
+          f"{len(glossary_changes)} glossary drift(s), "
+          f"{len(suspected)} suspected drift(s)")
 
     # 3. Blast radius from DataHub (live tables only — never PR state).
     consumers = {c.model_name: reader.get_downstream(c.model_name)
@@ -62,7 +65,7 @@ def run(args) -> int:
     queries = {c.model_name: reader.get_queries(c.model_name)
                for c in model_changes}
     report = blast_radius.assess(model_changes, glossary_changes,
-                                 consumers, queries)
+                                 consumers, queries, suspected)
     print(f"[guardian] severity={report.severity} score={report.score}")
 
     # Optional: ADK/Gemini narrative on top of the deterministic one.
@@ -71,26 +74,26 @@ def run(args) -> int:
         enrich_narrative(report, reader, config.google_api_key)
         print(f"[guardian] narrative source: {report.narrative_source}")
 
-    # 4. Writeback 1 — Data Contract into DataHub, on the most impacted
-    # breaking model (fall back to the first change).
-    target = next((c for c in model_changes if c.breaking),
-                  model_changes[0]) if model_changes else None
+    # 4. Writeback 1 — one Data Contract per impacted model: breaking, or
+    # drifted with known consumers (grill decision 2026-07-15, ADR-0009).
     pr_url = (f"https://github.com/{config.github_repository}/pull/"
               f"{args.pr_number}" if config.github_repository else
               f"PR #{args.pr_number}")
-    if target:
+    targets = [c for c in model_changes
+               if c.breaking or consumers.get(c.model_name)]
+    contracts: list = []
+    for target in targets:
         entity_urn = (reader.get_dataset_urn(target.model_name)
                       or config.dataset_urn(target.model_name))
         assertions = reader.get_assertions(target.model_name)
-        contract_result = contract.write_contract(
+        result = contract.write_contract(
             reader if config.mode == "live" else None,
             entity_urn, assertions, pr_url,
             offline=config.mode != "live")
-    else:
-        contract_result = contract.write_contract(
-            None, "", [], pr_url, offline=True)
-    print(f"[guardian] contract: {contract_result.mode} "
-          f"{contract_result.urn or ''}")
+        result.model_name = target.model_name
+        contracts.append(result)
+        print(f"[guardian] contract[{target.model_name}]: {result.mode} "
+              f"{result.urn or ''}")
 
     # 5. Generate mergeable compatibility code. The compat view must
     # reproduce what is LIVE, and DataHub — not the manifest's (possibly
@@ -104,12 +107,13 @@ def run(args) -> int:
 
     # 6. Writeback 2 — PR comment (idempotent), plus artifacts on disk and
     # the step summary.
-    body = pr_comment.render(report, contract_result, artifacts, config.mode)
+    body = pr_comment.render(report, contracts, artifacts, config.mode)
     out = Path(args.output_dir)
     out.mkdir(parents=True, exist_ok=True)
     (out / "comment.md").write_text(body)
-    (out / "contract_payload.json").write_text(
-        json.dumps(contract_result.payload, indent=2))
+    (out / "contract_payloads.json").write_text(json.dumps(
+        [{"model": c.model_name, "mode": c.mode, "urn": c.urn,
+          "payload": c.payload} for c in contracts], indent=2))
     for art in artifacts:
         (out / f"{art.view_name}.sql").write_text(art.sql)
         (out / f"{art.view_name}.yml").write_text(art.schema_yml)

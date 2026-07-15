@@ -127,6 +127,16 @@ Additional decisions from the same session:
   executes against the warehouse, which CI neither needs nor can do without
   creds. dbt's state:modified mechanism is kept; the execution isn't.
 
+## Domain language
+
+`CONTEXT.md` at the repo root is the glossary (ubiquitous language):
+breaking change (schema-strict), metric drift, semantic drift, suspected
+semantic drift, blast radius, compat/legacy views, PROPOSED contracts,
+reality-vs-hypothesis, offline mode. Challenge any usage that conflicts
+with it; update it the moment a term is resolved. Contract scope is one
+per impacted model (ADR-0009); the check is advisory by default
+(`--strict` is the opt-in gate).
+
 ## Key external references
 
 - Hackathon rules: https://datahub.devpost.com/rules

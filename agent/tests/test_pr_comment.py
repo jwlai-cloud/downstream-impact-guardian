@@ -1,6 +1,6 @@
 from agent import blast_radius, codegen, pr_comment
 from agent.models import (ColumnChange, ContractResult, GlossaryChange,
-                          Consumer, ModelChange, QueryUsage)
+                          Consumer, ModelChange, QueryUsage, SuspectedDrift)
 
 
 def _report():
@@ -26,8 +26,9 @@ def test_render_contains_all_sections_and_marker():
     arts = codegen.generate_all([ch])
     contract = ContractResult(mode="recorded-offline", urn=None,
                               payload={"entityUrn": "urn:li:dataset:x"},
-                              note="No DataHub credentials in this run")
-    body = pr_comment.render(report, contract, arts, mode="offline")
+                              note="No DataHub credentials in this run",
+                              model_name="fct_orders")
+    body = pr_comment.render(report, [contract], arts, mode="offline")
     assert pr_comment.MARKER in body
     assert "offline fixture mode" in body
     assert "`order_total` → `order_amount_usd`" in body
@@ -43,7 +44,31 @@ def test_render_live_contract_shows_urn():
     report, ch = _report()
     contract = ContractResult(mode="upserted",
                               urn="urn:li:dataContract:abc",
-                              payload={})
-    body = pr_comment.render(report, contract, [], mode="live")
+                              payload={}, model_name="fct_orders")
+    body = pr_comment.render(report, [contract], [], mode="live")
     assert "urn:li:dataContract:abc" in body
     assert "offline fixture mode" not in body
+
+
+def test_render_suspected_drift_and_multiple_contracts():
+    report, ch = _report()
+    report.suspected_drifts = [SuspectedDrift(
+        term_name="Gross Revenue", model_name="revenue_daily",
+        column="gross_revenue", live_definition="refunds included")]
+    contracts = [
+        ContractResult(mode="upserted", urn="urn:li:dataContract:a",
+                       payload={}, model_name="fct_orders"),
+        ContractResult(mode="upserted", urn="urn:li:dataContract:b",
+                       payload={}, model_name="revenue_daily"),
+    ]
+    body = pr_comment.render(report, contracts, [], mode="live")
+    assert "⚠️ suspected" in body
+    assert "revenue_daily.gross_revenue" in body
+    assert "urn:li:dataContract:a" in body
+    assert "urn:li:dataContract:b" in body
+
+
+def test_render_no_contracts_says_so():
+    report, ch = _report()
+    body = pr_comment.render(report, [], [], mode="live")
+    assert "no contract proposed" in body.lower()

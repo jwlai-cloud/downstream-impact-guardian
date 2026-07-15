@@ -6,7 +6,7 @@ from __future__ import annotations
 import re
 
 from agent.models import (Consumer, GlossaryChange, ImpactReport, ModelChange,
-                          QueryUsage)
+                          QueryUsage, SuspectedDrift)
 
 # Scoring weights — deliberately simple and inspectable; the LLM narrates,
 # it does not score (determinism in CI).
@@ -14,6 +14,7 @@ W_BREAKING_SCHEMA = 3
 W_LOGIC_ON_GLOSSARY_METRIC = 2
 W_LOGIC_PLAIN = 1
 W_SEMANTIC_DRIFT = 2
+W_SUSPECTED_DRIFT = 1   # suspicion, not asserted divergence — weighs less
 W_PER_CONSUMER = 1
 W_CONSUMER_CAP = 4
 W_EXTERNAL_PLATFORM = 2
@@ -31,7 +32,9 @@ def _changed_column_names(change: ModelChange) -> set[str]:
 def assess(model_changes: list[ModelChange],
            glossary_changes: list[GlossaryChange],
            consumers: dict[str, list[Consumer]],
-           queries: dict[str, list[QueryUsage]]) -> ImpactReport:
+           queries: dict[str, list[QueryUsage]],
+           suspected_drifts: list[SuspectedDrift] | None = None) -> ImpactReport:
+    suspected_drifts = suspected_drifts or []
     score = 0
 
     for change in model_changes:
@@ -56,6 +59,7 @@ def assess(model_changes: list[ModelChange],
                 score += W_QUERY_HITS_CHANGED_COLUMN
 
     score += len(glossary_changes) * W_SEMANTIC_DRIFT
+    score += len(suspected_drifts) * W_SUSPECTED_DRIFT
 
     severity = next(label for floor, label in THRESHOLDS if score >= floor)
     report = ImpactReport(
@@ -63,6 +67,7 @@ def assess(model_changes: list[ModelChange],
         glossary_changes=glossary_changes,
         consumers=consumers,
         queries=queries,
+        suspected_drifts=suspected_drifts,
         severity=severity,
         score=score,
     )
@@ -90,4 +95,10 @@ def _deterministic_narrative(r: ImpactReport) -> str:
             f"Semantic drift on glossary term **{g.term_name}**: the PR's "
             f"definition no longer matches what DataHub says the business "
             f"currently means by it.")
+    for s in (r.suspected_drifts or []):
+        parts.append(
+            f"Suspected semantic drift: `{s.model_name}.{s.column}` is bound "
+            f"to glossary term **{s.term_name}** and its logic changed, but "
+            f"this PR does not update the term — verify the live definition "
+            f"still holds.")
     return " ".join(parts) if parts else "No impactful changes detected."

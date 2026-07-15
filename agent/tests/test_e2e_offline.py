@@ -68,8 +68,12 @@ nodes:
     legacy = (out / "revenue_daily_legacy.sql").read_text()
     assert "ref('fct_orders_compat')" in legacy
 
-    payload = json.loads((out / "contract_payload.json").read_text())
-    assert payload["entityUrn"].endswith("fct_orders,PROD)")
+    payloads = json.loads((out / "contract_payloads.json").read_text())
+    # one contract per impacted model: fct_orders (breaking) AND
+    # revenue_daily (drifted with known consumers) — ADR-0009
+    assert {p["model"] for p in payloads} == {"fct_orders", "revenue_daily"}
+    fct = next(p for p in payloads if p["model"] == "fct_orders")
+    assert fct["payload"]["entityUrn"].endswith("fct_orders,PROD)")
 
 
 def test_no_change_pr_exits_quietly(tmp_path, monkeypatch):

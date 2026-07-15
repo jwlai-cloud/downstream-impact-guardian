@@ -45,6 +45,42 @@ def test_new_model_is_additive():
     assert dbt_state.diff_manifests(old, new) == []
 
 
+def test_suspected_drift_when_glossary_forgotten():
+    """Logic change on a term-bound model, no glossary edit in the PR."""
+    import copy
+    import json as _json
+    from conftest import REPO_ROOT
+    prod = _json.loads((REPO_ROOT / "dbt_demo_project" / "prod_state" /
+                        "manifest.json").read_text())
+    pr = copy.deepcopy(prod)
+    pr["nodes"]["model.fiction_retail.revenue_daily"]["raw_code"] += "\n-- x"
+    pr["nodes"]["model.fiction_retail.revenue_daily"]["raw_code"] = \
+        pr["nodes"]["model.fiction_retail.revenue_daily"]["raw_code"].replace(
+            "!= 'cancelled'", "in ('completed')")
+    changes = dbt_state.diff_manifests(prod, pr)
+    suspected = dbt_state.find_suspected_drifts(
+        pr, changes, glossary_changes=[], reader=FixtureDataHubClient())
+    assert len(suspected) == 1
+    s = suspected[0]
+    assert (s.term_name, s.model_name, s.column) == \
+        ("Gross Revenue", "revenue_daily", "gross_revenue")
+    assert "refunds included" in s.live_definition
+
+
+def test_suspected_drift_suppressed_when_glossary_updated():
+    from agent.models import GlossaryChange, ModelChange
+    ch = ModelChange(model_name="revenue_daily",
+                     unique_id="model.fiction_retail.revenue_daily",
+                     kinds={"logic"})
+    pr = {"nodes": {"model.fiction_retail.revenue_daily": {
+        "name": "revenue_daily",
+        "columns": {"gross_revenue":
+                    {"meta": {"business_glossary_term": "Gross Revenue"}}}}}}
+    updated = [GlossaryChange("Gross Revenue", "old", "new")]
+    assert dbt_state.find_suspected_drifts(
+        pr, [ch], updated, FixtureDataHubClient()) == []
+
+
 def test_glossary_drift_against_live_datahub(tmp_path):
     g = tmp_path / "glossary.yml"
     g.write_text("""

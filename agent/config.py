@@ -26,7 +26,8 @@ class Config:
         gms_url = os.environ.get("DATAHUB_GMS_URL", "")
         gms_token = os.environ.get("DATAHUB_GMS_TOKEN", "")
         if mode == "auto":
-            mode = "live" if (gms_url and gms_token) else "offline"
+            # Token optional: a local quickstart runs without metadata auth
+            mode = "live" if gms_url else "offline"
         return cls(
             datahub_gms_url=gms_url.rstrip("/"),
             datahub_gms_token=gms_token,

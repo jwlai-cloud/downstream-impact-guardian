@@ -13,7 +13,8 @@ from pathlib import Path
 
 import yaml
 
-from agent.models import ColumnChange, GlossaryChange, ModelChange
+from agent.models import (ColumnChange, GlossaryChange, ModelChange,
+                          SuspectedDrift)
 
 
 def load_manifest(path: str | Path) -> dict:
@@ -77,6 +78,35 @@ def diff_manifests(prod: dict, pr: dict) -> list[ModelChange]:
             changes.append(change)
 
     return changes
+
+
+def find_suspected_drifts(pr_manifest: dict,
+                          model_changes: list[ModelChange],
+                          glossary_changes: list[GlossaryChange],
+                          reader) -> list[SuspectedDrift]:
+    """The "forgot the glossary" case: a model with metric drift has a column
+    bound to a glossary term, and the PR does NOT update that term's
+    definition. Flag for verification against the live definition —
+    suspicion, not asserted divergence (see CONTEXT.md)."""
+    updated_terms = {g.term_name for g in glossary_changes}
+    models = _models(pr_manifest)
+    suspected: list[SuspectedDrift] = []
+    for change in model_changes:
+        if "logic" not in change.kinds:
+            continue
+        node = models.get(change.unique_id, {})
+        for col_name, col in (node.get("columns") or {}).items():
+            term = (col.get("meta") or {}).get("business_glossary_term")
+            if not term or term in updated_terms:
+                continue
+            live = reader.get_glossary_term(term)
+            suspected.append(SuspectedDrift(
+                term_name=term,
+                model_name=change.model_name,
+                column=col_name,
+                live_definition=(live or {}).get("definition", "(term not found in DataHub)"),
+            ))
+    return suspected
 
 
 def diff_glossary(pr_glossary_path: str | Path, reader) -> list[GlossaryChange]:

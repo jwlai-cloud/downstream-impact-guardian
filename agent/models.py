@@ -37,6 +37,17 @@ class GlossaryChange:
 
 
 @dataclass
+class SuspectedDrift:
+    """Metric drift on a term-bound model with NO matching glossary update in
+    the PR (the "forgot the glossary" case) — a suspicion to verify, never an
+    asserted divergence. See CONTEXT.md."""
+    term_name: str
+    model_name: str
+    column: str
+    live_definition: str
+
+
+@dataclass
 class Consumer:
     name: str
     platform: str              # bigquery | looker | dbt | ...
@@ -70,6 +81,7 @@ class ContractResult:
     urn: str | None
     payload: dict
     note: str = ""
+    model_name: str = ""       # the impacted model this contract covers
 
 
 @dataclass
@@ -78,6 +90,7 @@ class ImpactReport:
     glossary_changes: list[GlossaryChange]
     consumers: dict[str, list[Consumer]]       # model_name -> consumers
     queries: dict[str, list[QueryUsage]]       # model_name -> query usage
+    suspected_drifts: list[SuspectedDrift] = field(default_factory=list)
     severity: str = "LOW"                      # LOW | MEDIUM | HIGH | CRITICAL
     score: int = 0
     narrative: str = ""

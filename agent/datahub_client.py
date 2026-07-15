@@ -64,10 +64,10 @@ class LiveDataHubClient:
     def __init__(self, config: Config):
         self.config = config
         self._session = requests.Session()
-        self._session.headers.update({
-            "Authorization": f"Bearer {config.datahub_gms_token}",
-            "Content-Type": "application/json",
-        })
+        self._session.headers.update({"Content-Type": "application/json"})
+        if config.datahub_gms_token:
+            self._session.headers.update(
+                {"Authorization": f"Bearer {config.datahub_gms_token}"})
 
     def graphql(self, query: str, variables: dict | None = None) -> dict:
         resp = self._session.post(
