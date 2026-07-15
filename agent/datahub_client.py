@@ -146,7 +146,18 @@ class LiveDataHubClient:
                 urn=e["urn"],
                 hops=r.get("degree", 1),
             ))
-        return consumers
+        # dbt ingestion creates a dbt + warehouse sibling per model; both
+        # appear in lineage. Collapse to one logical consumer (lowest hops).
+        consumers.sort(key=lambda c: c.hops)
+        seen: set[tuple] = set()
+        deduped = []
+        for c in consumers:
+            key = (c.name.split(".")[-1].lower(), c.entity_type)
+            if key in seen:
+                continue
+            seen.add(key)
+            deduped.append(c)
+        return deduped
 
     def get_queries(self, model_name: str) -> list[QueryUsage]:
         urn = self.config.dataset_urn(model_name)
@@ -189,23 +200,28 @@ class LiveDataHubClient:
         return None
 
     def get_assertions(self, model_name: str) -> list[dict]:
-        urn = self.config.dataset_urn(model_name)
-        data = self.graphql(
-            """query assertions($urn: String!) {
-                 dataset(urn: $urn) {
-                   assertions(start: 0, count: 50) {
-                     assertions { urn info { type description } }
-                   }
-                 }
-               }""",
-            {"urn": urn},
-        )
-        assertions = (((data.get("dataset") or {}).get("assertions") or {})
-                      .get("assertions") or [])
-        return [{"urn": a["urn"],
-                 "type": (a.get("info") or {}).get("type", ""),
-                 "description": (a.get("info") or {}).get("description", "")}
-                for a in assertions]
+        # dbt test assertions attach to the DBT sibling, not the warehouse
+        # entity (verified against OSS quickstart 2026-07-15) — query both.
+        merged: dict[str, dict] = {}
+        for platform in ("bigquery", "dbt"):
+            urn = self.config.dataset_urn(model_name, platform=platform)
+            data = self.graphql(
+                """query assertions($urn: String!) {
+                     dataset(urn: $urn) {
+                       assertions(start: 0, count: 50) {
+                         assertions { urn info { type description } }
+                       }
+                     }
+                   }""",
+                {"urn": urn},
+            )
+            for a in (((data.get("dataset") or {}).get("assertions") or {})
+                      .get("assertions") or []):
+                info = a.get("info") or {}
+                merged[a["urn"]] = {"urn": a["urn"],
+                                    "type": info.get("type") or "",
+                                    "description": info.get("description") or ""}
+        return list(merged.values())
 
 
 def make_reader(config: Config) -> DataHubReader:

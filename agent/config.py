@@ -36,11 +36,13 @@ class Config:
             github_token=os.environ.get("GITHUB_TOKEN", ""),
             github_repository=os.environ.get("GITHUB_REPOSITORY", ""),
             # `or` (not get() default): Actions passes unset vars as ""
-            bq_project=os.environ.get("GCP_PROJECT") or "dig-demo-sandbox",
+            bq_project=os.environ.get("GCP_PROJECT") or "agent-era",
             bq_dataset=os.environ.get("BQ_DATASET") or "fiction_retail",
             mode=mode,
         )
 
-    def dataset_urn(self, model_name: str) -> str:
+    def dataset_urn(self, model_name: str, platform: str = "bigquery") -> str:
+        # dbt ingestion creates sibling entities on both platforms; some
+        # aspects (e.g. test assertions) land on the dbt sibling only
         fqn = f"{self.bq_project}.{self.bq_dataset}.{model_name}"
-        return f"urn:li:dataset:(urn:li:dataPlatform:bigquery,{fqn},PROD)"
+        return f"urn:li:dataset:(urn:li:dataPlatform:{platform},{fqn},PROD)"

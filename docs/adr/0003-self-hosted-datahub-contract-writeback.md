@@ -32,3 +32,14 @@ agent refuses and says why (a contract must bundle assertions, SPEC §5).
 No trial-expiry risk; full API control. We lose the native proposal inbox
 UI — acceptable, and worth one honest line in the submission. If judging
 economics change, rules explicitly permit video+repo as primary evidence.
+
+## Verified against a live OSS quickstart (2026-07-15, same day)
+
+`upsertDataContract` EXISTS and works on self-hosted OSS — only the
+proposal inbox is Cloud-only. The shipped design: GraphQL upsert (input is
+strictly entityUrn + assertion bundles; unknown keys are rejected), then a
+`dataContractStatus` aspect stamps `state=PENDING` +
+proposedBy/sourcePullRequest custom properties via the SDK. Also verified:
+upsert is entity-scoped (re-running updates the same contract urn), and
+dbt-test assertions attach to the **dbt sibling** entity, not the warehouse
+one — the client queries both siblings and merges.

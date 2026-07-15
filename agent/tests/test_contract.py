@@ -6,14 +6,22 @@ def test_payload_bundles_existing_assertions():
     reader = FixtureDataHubClient()
     assertions = reader.get_assertions("fct_orders")
     payload = contract.build_contract_input(
-        reader.get_dataset_urn("fct_orders"), assertions,
-        "https://github.com/x/y/pull/1")
+        reader.get_dataset_urn("fct_orders"), assertions)
     assert payload["entityUrn"].endswith("fct_orders,PROD)")
     urns = [s["assertionUrn"] for s in payload["schema"]]
     assert "urn:li:assertion:fct_orders.unique_order_id" in urns
-    props = {p["key"]: p["value"] for p in payload["properties"]}
-    assert props["status"] == "PROPOSED"
-    assert props["proposedBy"] == "downstream-impact-guardian"
+    # provenance travels separately — the GraphQL input rejects extra keys
+    assert "properties" not in payload
+    prov = contract.build_provenance("https://github.com/x/y/pull/1")
+    assert prov["status"] == "PROPOSED"
+    assert prov["proposedBy"] == "downstream-impact-guardian"
+
+
+def test_null_description_assertions_dont_crash():
+    payload = contract.build_contract_input(
+        "urn:li:dataset:x",
+        [{"urn": "urn:li:assertion:a", "type": "DATASET", "description": None}])
+    assert payload["schema"] == [{"assertionUrn": "urn:li:assertion:a"}]
 
 
 def test_offline_mode_records_payload_without_writing():

@@ -1,6 +1,6 @@
 {
   "fct_orders": {
-    "urn": "urn:li:dataset:(urn:li:dataPlatform:bigquery,dig-demo-sandbox.fiction_retail.fct_orders,PROD)",
+    "urn": "urn:li:dataset:(urn:li:dataPlatform:bigquery,agent-era.fiction_retail.fct_orders,PROD)",
     "schema": [
       {"name": "order_id", "type": "STRING"},
       {"name": "customer_id", "type": "STRING"},
@@ -17,7 +17,7 @@
     ]
   },
   "revenue_daily": {
-    "urn": "urn:li:dataset:(urn:li:dataPlatform:bigquery,dig-demo-sandbox.fiction_retail.revenue_daily,PROD)",
+    "urn": "urn:li:dataset:(urn:li:dataPlatform:bigquery,agent-era.fiction_retail.revenue_daily,PROD)",
     "schema": [
       {"name": "order_date", "type": "DATE"},
       {"name": "order_count", "type": "INT64"},

@@ -84,9 +84,22 @@ whole pitch.
 
 - Rename detection is a 1-removed/1-added heuristic; anything more
   ambiguous is reported as remove+add and flagged for a human.
-- `LiveDataHubClient` GraphQL documents follow OSS schema docs but have
-  been exercised against fixtures only until the judge instance is up.
 - `type_changed` detection is limited because dbt yml rarely carries
   `data_type`; the live-schema path is where that would come from.
 - Prod-manifest refresh is a script, not a main-branch workflow — the
   obvious next automation.
+- Live-mode gaps still open: `listQueries` returns nothing until query
+  usage is ingested (fixtures carry the story meanwhile), and the ADK
+  narrative needs a `GOOGLE_API_KEY` secret to run.
+
+## Live verification (2026-07-15, local OSS quickstart)
+
+The full loop ran against a real instance: dbt built in BigQuery
+(`agent-era`), glossary + models + test-assertions ingested, then the agent
+in live mode — lineage traversal, sibling dedupe, glossary drift, and
+`upsertDataContract` + PENDING status aspect all confirmed working
+(contract inspectable via OpenAPI). Findings that changed code: assertions
+live on the dbt sibling urn (client now merges both siblings), the upsert
+input rejects unknown keys (provenance moved to a status aspect), and
+`dbt docs generate` overwrites `run_results.json` (run tests last before
+ingesting).

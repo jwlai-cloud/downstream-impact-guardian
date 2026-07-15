@@ -24,7 +24,9 @@ Lineage: seeds → `stg_customers`/`stg_orders` → `fct_orders` → `revenue_da
 export GCP_PROJECT=... BQ_DATASET=fiction_retail
 export DATAHUB_GMS_URL=... DATAHUB_GMS_TOKEN=...
 cd dbt_demo_project
-dbt seed && dbt build && dbt docs generate       # data + manifest/catalog/run_results
+dbt seed && dbt build && dbt docs generate && dbt test
+# ^ `docs generate` OVERWRITES run_results.json with a non-build entry the
+#   DataHub source skips — run `dbt test` (or build) LAST so assertions ingest
 datahub ingest -c datahub/glossary_ingest.yml     # glossary terms (v1)
 datahub ingest -c datahub/dbt_ingest.yml          # models, lineage, assertions
 ```

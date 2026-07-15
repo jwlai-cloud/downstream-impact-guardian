@@ -8,7 +8,17 @@ fiction_retail:
     dev:
       type: bigquery
       method: oauth
-      project: "{{ env_var('GCP_PROJECT', 'dig-demo-sandbox') }}"
+      project: "{{ env_var('GCP_PROJECT', 'agent-era') }}"
+      dataset: "{{ env_var('BQ_DATASET', 'fiction_retail') }}"
+      location: "{{ env_var('BQ_LOCATION', 'US') }}"
+      threads: 4
+    # For running as a non-ADC account: BQ_ACCESS_TOKEN from
+    # `gcloud auth print-access-token --account=<acct>` (valid ~1h)
+    token:
+      type: bigquery
+      method: oauth-secrets
+      token: "{{ env_var('BQ_ACCESS_TOKEN', '') }}"
+      project: "{{ env_var('GCP_PROJECT', 'agent-era') }}"
       dataset: "{{ env_var('BQ_DATASET', 'fiction_retail') }}"
       location: "{{ env_var('BQ_LOCATION', 'US') }}"
       threads: 4
