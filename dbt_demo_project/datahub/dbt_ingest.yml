@@ -1,0 +1,32 @@
+# One-time (per master merge) ingestion of the dbt project into DataHub.
+# Run:  datahub ingest -c dbt_demo_project/datahub/dbt_ingest.yml
+# Requires: dbt compiled at least once (manifest/catalog under target/),
+# DATAHUB_GMS_URL + DATAHUB_GMS_TOKEN in env.
+# NEVER run this from a PR branch — DataHub only ever reflects reality
+# (see CLAUDE.md).
+source:
+  type: dbt
+  config:
+    manifest_path: dbt_demo_project/target/manifest.json
+    catalog_path: dbt_demo_project/target/catalog.json
+    run_results_paths:
+      - dbt_demo_project/target/run_results.json
+    target_platform: bigquery
+    # dbt tests -> DataHub assertions; these back the Data Contract.
+    entities_enabled:
+      test_results: Yes
+      test_definitions: Yes
+      model_performance: Yes
+    # column meta `business_glossary_term: X` -> glossary term attachment
+    column_meta_mapping:
+      business_glossary_term:
+        match: ".*"
+        operation: add_term
+        config:
+          term: "{{ $match }}"
+
+sink:
+  type: datahub-rest
+  config:
+    server: "${DATAHUB_GMS_URL}"
+    token: "${DATAHUB_GMS_TOKEN}"

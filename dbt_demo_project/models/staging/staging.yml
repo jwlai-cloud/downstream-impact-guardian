@@ -1,0 +1,41 @@
+version: 2
+
+models:
+  - name: stg_customers
+    description: One row per customer, lightly cleaned from the raw seed.
+    columns:
+      - name: customer_id
+        description: Primary key.
+        tests: [unique, not_null]
+      - name: email
+        description: Lower-cased contact email.
+      - name: country
+        description: ISO-3166 alpha-2 country code, upper-cased.
+      - name: signup_date
+        description: Date the customer account was created.
+        config:
+          meta:
+            business_glossary_term: "Active Customer"
+
+  - name: stg_orders
+    description: One row per order, statuses normalized to lower case.
+    columns:
+      - name: order_id
+        description: Primary key.
+        tests: [unique, not_null]
+      - name: customer_id
+        description: FK to stg_customers.
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_customers')
+                field: customer_id
+      - name: order_status
+        description: Lifecycle status of the order.
+        tests:
+          - accepted_values:
+              arguments:
+                values: [pending, shipped, completed, cancelled, refunded]
+      - name: order_total
+        description: Order value in the order currency, tax included.

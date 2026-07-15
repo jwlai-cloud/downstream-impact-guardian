@@ -1,0 +1,34 @@
+version: 2
+
+models:
+  - name: fct_orders
+    description: >
+      Order-level fact table. Cross-team consumers: finance revenue
+      dashboard, marketing LTV model (see DataHub lineage — those live
+      outside this repo).
+    columns:
+      - name: order_id
+        tests: [unique, not_null]
+      - name: order_total
+        description: Order value in the order currency, tax included.
+      - name: order_status
+        description: Lifecycle status of the order.
+      - name: is_fulfilled
+        description: True when the order has shipped or completed.
+
+  - name: revenue_daily
+    description: Daily revenue rollup for finance reporting.
+    columns:
+      - name: order_date
+        tests: [unique, not_null]
+      - name: gross_revenue
+        description: >
+          Sum of order_total over all non-cancelled orders placed that day,
+          refunds included.
+        config:
+          meta:
+            business_glossary_term: "Gross Revenue"
+      - name: order_count
+        description: Number of non-cancelled orders placed that day.
+      - name: avg_order_value
+        description: gross_revenue / order_count.

@@ -1,0 +1,14 @@
+# Ingest the business glossary. Re-running after editing
+# business_glossary.yml creates a new version of the term in DataHub —
+# that version history is what compare_glossary_term_versions reads.
+# Run:  datahub ingest -c dbt_demo_project/datahub/glossary_ingest.yml
+source:
+  type: datahub-business-glossary
+  config:
+    file: dbt_demo_project/datahub/business_glossary.yml
+
+sink:
+  type: datahub-rest
+  config:
+    server: "${DATAHUB_GMS_URL}"
+    token: "${DATAHUB_GMS_TOKEN}"

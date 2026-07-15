@@ -1,0 +1,23 @@
+# Ingested via datahub/glossary_ingest.yml (datahub-business-glossary source).
+# The agent compares the version of these terms live in DataHub against
+# what a PR proposes — see ADR-0005.
+version: "1"
+source: DataHub
+owners:
+  users:
+    - datahub
+nodes:
+  - name: Commerce Metrics
+    description: Revenue and customer metrics for the fiction-retail demo.
+    terms:
+      - name: Gross Revenue
+        description: >
+          Sum of order_total over all non-cancelled orders in the period,
+          refunds included. Refunds are netted out downstream in net
+          revenue, never here.
+        term_source: INTERNAL
+      - name: Active Customer
+        description: >
+          A customer with at least one non-cancelled order in the trailing
+          90 days.
+        term_source: INTERNAL

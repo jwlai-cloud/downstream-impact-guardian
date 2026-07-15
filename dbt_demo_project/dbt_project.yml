@@ -1,0 +1,31 @@
+name: fiction_retail
+version: "1.0.0"
+config-version: 2
+
+profile: fiction_retail
+
+model-paths: ["models"]
+seed-paths: ["seeds"]
+test-paths: ["tests"]
+target-path: "target"
+clean-targets: ["target", "dbt_packages"]
+
+models:
+  fiction_retail:
+    staging:
+      +materialized: view
+    marts:
+      +materialized: table
+
+seeds:
+  fiction_retail:
+    raw_customers:
+      +column_types:
+        customer_id: string
+        signup_date: date
+    raw_orders:
+      +column_types:
+        order_id: string
+        customer_id: string
+        order_date: date
+        order_total: numeric

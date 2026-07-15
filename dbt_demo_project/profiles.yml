@@ -1,0 +1,14 @@
+# Committed on purpose: env-var driven, no credentials in here.
+# `dbt parse` / `dbt ls` never open a connection, so CI works with the
+# defaults; real runs need `gcloud auth application-default login` or a
+# service-account keyfile via DBT_GOOGLE_KEYFILE.
+fiction_retail:
+  target: dev
+  outputs:
+    dev:
+      type: bigquery
+      method: oauth
+      project: "{{ env_var('GCP_PROJECT', 'dig-demo-sandbox') }}"
+      dataset: "{{ env_var('BQ_DATASET', 'fiction_retail') }}"
+      location: "{{ env_var('BQ_LOCATION', 'US') }}"
+      threads: 4

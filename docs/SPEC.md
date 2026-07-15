@@ -174,3 +174,36 @@ let this compete for time against the core loop.
   orchestration semantics (this design doesn't).
 - Not ingesting hypothetical/PR-branch state into the judge-facing DataHub
   instance — DataHub only ever reflects reality.
+
+## 11. Grill session 2026-07-15 — open questions resolved, one correction
+
+All five open questions from CLAUDE.md were decided with the user in one
+session. Decisions and full rationale live in `docs/adr/0001`–`0008`;
+CLAUDE.md carries the summaries. Two findings from the session worth
+recording here because they correct or sharpen earlier sections:
+
+**Correction to section 5 (Data Contracts).** Verified against
+`docs/api/tutorials/data-contracts` on 2026-07-15: the tutorial documents
+`upsertDataContract` ONLY and states it "specifically covers how to use the
+Data Contract APIs with DataHub Cloud." `proposeDataContract` does not
+appear on that page at all; the proposal/inbox workflow is a DataHub Cloud
+feature. Section 5's claim that a governed `proposeDataContract` mutation
+was available to us was over-optimistic. Since we chose self-hosted OSS
+(ADR-0003), the writeback design is now: try `upsertDataContract` against
+the OSS GraphQL schema; if absent, emit `dataContractProperties` directly
+via the Python SDK. Either way the contract is marked PROPOSED (via
+status/customProperties) and the human approval gate is the PR merge
+itself. This stays honest to the original intent (a human approves new
+contracts) without depending on a Cloud-only mutation.
+
+**Judge-path secrets hole, and the fix.** Fork PRs receive no repository
+secrets, so an agent triggered from a forked PR can reach neither DataHub
+nor Gemini. Two-part fix: (a) the documented judge path is opening a PR
+from the pre-made `demo/*` branch to `master` *within this repo* — public
+repos allow anyone with read access to open a PR between existing branches,
+no fork required — which runs with real secrets; (b) the agent has a
+first-class offline fixture mode (ADR-0007) that produces the complete
+comment from committed fixtures when secrets are absent, and always writes
+the comment body to `$GITHUB_STEP_SUMMARY` so output is visible even when
+comment posting is impossible. The offline mode also let the whole agent be
+built and tested before any live DataHub instance existed.

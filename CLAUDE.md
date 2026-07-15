@@ -30,7 +30,9 @@ description, pick Track 1 as primary if the form forces one choice.
   judgment call (schema/logic/semantic change + real lineage blast radius)
   and the two writebacks. See docs/SPEC.md for the full "what's already
   shipped" audit.
-- **Agent framework: Google ADK on GCP, hosted on Cloud Run.** DataHub ships
+- **Agent framework: Google ADK.** Core loop runs the agent *inside the
+  GitHub Action runner* (`python agent/main.py`) — Cloud Run hosting is only
+  relevant to the stretch-goal web UI, not the core loop (ADR-0008). DataHub ships
   a first-party, documented ADK integration (`datahub-agent-context[google-adk]`)
   with working examples. LangChain is an equally safe fallback (also
   officially documented by DataHub) if ADK friction shows up — the user has
@@ -49,11 +51,14 @@ description, pick Track 1 as primary if the form forces one choice.
   `get_dataset_queries`, because this is the one thing no single repo or
   coding agent can see (cross-system, cross-team usage).
 - **Two separate writebacks, both required, in this order:**
-  1. To DataHub: `proposeDataContract` (bundling the relevant assertion,
-     which can come from ingested dbt test results) — the durable,
-     catalog-level record. Governed/proposal form preferred over direct
-     `upsertDataContract` since a human should approve a new contract.
-  2. To the repo: PR comment + generated compatibility SQL/dbt macro + tests,
+  1. To DataHub: a Data Contract, durable catalog-level record. VERIFIED
+     2026-07-15: `proposeDataContract`/proposal-inbox is DataHub Cloud-only
+     and the Data Contracts API tutorial is explicitly Cloud-scoped. On
+     self-hosted OSS (our chosen hosting, see ADR-0003) the writeback is
+     `upsertDataContract` if present in the OSS GraphQL schema, else direct
+     SDK emission of `dataContractProperties`, with the contract marked
+     PROPOSED via status/customProperties — human approval = PR merge.
+  2. To the repo: PR comment + generated compatibility SQL view + tests,
      referencing the DataHub contract created in step 1.
 - **Trigger: GitHub Actions on `pull_request` (opened/synchronize).** This is
   the real, primary interface — not a chatbot, not a UI-first experience.
@@ -84,23 +89,43 @@ description, pick Track 1 as primary if the form forces one choice.
   relying on video+repo as primary evidence (rules explicitly permit the
   latter — judges aren't required to test live).
 
-## Open questions to keep grilling on on in this repo
+## Formerly-open questions — RESOLVED in grill session 2026-07-15
 
-- Which public dataset, finally: nyc-taxi vs. fiction-retail — pick based on
-  whether the "planted freshness issue" story is worth more than a clean
-  canvas for staging a logic change deliberately.
-- Exact shape of the generated compatibility artifact (SQL view vs. dbt
-  macro vs. both) — depends on the specific schema/logic change staged in
-  prep.
-- DataHub Cloud free trial vs. self-hosted GCE VM for the judge-facing
-  instance — trial timing risk vs. hosting cost/maintenance.
-- GitHub auth for the Action + agent: fine-grained PAT vs. GitHub App —
-  App is more correct for a real product but more setup; PAT is faster for
-  a hackathon timeline.
-- Whether to formalize glossary terms (richer semantic-layer story, more
-  setup) or just use dbt's plain `description:` field (simpler, still
-  tracked by DataHub's Timeline API under DOCUMENTATION) for the semantic
-  change detection demo.
+All five decided with the user; full rationale in docs/adr/. Don't reopen
+without new information.
+
+- **Dataset: fiction-retail** (ADR-0001). Clean canvas + relational
+  customers/orders structure gives a real bronze/silver/gold lineage story
+  and believable cross-team consumers. nyc-taxi's planted freshness scenario
+  is irrelevant to a schema/logic/semantic-change demo.
+- **Compatibility artifact: one dbt compat view + schema.yml tests**
+  (ADR-0002). No macro. Mergeable as-is, appears in DataHub lineage on next
+  ingest.
+- **Hosting: self-hosted OSS DataHub** — Docker quickstart for dev, GCE VM
+  for the judging window (ADR-0003). Removes Cloud-trial expiry risk over
+  Aug 17–31. Consequence (verified): no proposal inbox; contract writeback
+  is upsert/SDK-emission with PROPOSED status.
+- **GitHub auth: built-in Actions `GITHUB_TOKEN`** with
+  `pull-requests: write` (ADR-0004). PAT-vs-App only matters for the stretch
+  UI; decide there if/when it's built.
+- **Semantic layer: formal glossary terms** via `business_glossary.yml`
+  ingestion, attached through dbt `meta` (ADR-0005). Uses
+  `compare_glossary_term_versions` as designed.
+
+Additional decisions from the same session:
+- **Prod dbt manifest is committed to the repo** at
+  `dbt_demo_project/prod_state/manifest.json` (ADR-0006) — the only
+  zero-infra way the state comparison works for judge-opened PRs.
+- **Offline fixture mode is a first-class agent mode** (ADR-0007): if
+  DataHub/Gemini secrets are absent (fork PRs get no secrets), the agent
+  runs against committed fixtures and still renders the full comment +
+  writes it to `$GITHUB_STEP_SUMMARY`. Judge path avoids the problem
+  entirely: a PR from the pre-made `demo/*` branch *within this repo* (no
+  fork needed — read access suffices to open a PR between existing branches
+  of a public repo) runs with real secrets.
+- **Detection uses `dbt ls`/manifest diff, not `dbt build`** — `build`
+  executes against the warehouse, which CI neither needs nor can do without
+  creds. dbt's state:modified mechanism is kept; the execution isn't.
 
 ## Key external references
 
