@@ -62,23 +62,15 @@ sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 8080 -j ACCEPT
 sudo netfilter-persistent save
 ```
 
-## 4. Install Docker + DataHub (on the VM)
+## 4. Install Docker + DataHub (on the VM) — scripted
 
 ```bash
-ssh ubuntu@<public-ip>
-
-# Docker
-curl -fsSL https://get.docker.com | sudo sh
-sudo usermod -aG docker ubuntu && exit   # re-ssh to pick up the group
-
-# DataHub CLI + quickstart (arm64 images pull automatically)
-sudo apt-get update && sudo apt-get install -y python3-pip python3-venv
-python3 -m venv ~/dh && ~/dh/bin/pip install acryl-datahub
-~/dh/bin/datahub docker quickstart
+scp scripts/oracle_vm_setup.sh ubuntu@<public-ip>:
+ssh ubuntu@<public-ip> bash oracle_vm_setup.sh
 ```
 
-~5–10 min first pull. Then `http://<public-ip>:9002`, login
-`datahub` / `datahub`.
+(Does the on-instance iptables too.) ~5–10 min first pull. Then
+`http://<public-ip>:9002`, login `datahub` / `datahub`.
 
 ## 5. Harden before judges arrive (public instance ≠ local toy)
 
@@ -97,20 +89,16 @@ python3 -m venv ~/dh && ~/dh/bin/pip install acryl-datahub
 The agent already sends the bearer token only when set (`agent/config.py`),
 so nothing in the repo changes.
 
-## 6. Ingest (from your Mac, same sequence as local)
+## 6. Ingest (from your Mac) — scripted, verified against local quickstart
 
 ```bash
-export DATAHUB_GMS_URL=http://<public-ip>:8080 DATAHUB_GMS_TOKEN=<token>
-export BQ_ACCESS_TOKEN=$(gcloud auth print-access-token --account=<personal>) \
-       GCP_PROJECT=agent-era DBT_PROFILES_DIR=.
-cd dbt_demo_project
-dbt seed --target token && dbt build --target token && \
-  dbt docs generate --target token && dbt test --target token
-# ^ dbt test LAST — docs generate overwrites run_results.json (README)
-cd .. \
-  && datahub ingest -c dbt_demo_project/datahub/glossary_ingest.yml \
-  && datahub ingest -c dbt_demo_project/datahub/dbt_ingest.yml
+DATAHUB_GMS_URL=http://<public-ip>:8080 DATAHUB_GMS_TOKEN=<token> \
+  bash scripts/ingest_all.sh
 ```
+
+Wraps: BigQuery build (`agent-era`, token target, ADC untouched) →
+`dbt test` last (assertions gotcha) → glossary ingest (versioned on
+re-run) → dbt ingest → prod-manifest refresh. Same script, any instance.
 
 ## 7. Wire the repo (GitHub → Settings → Secrets and variables → Actions)
 
