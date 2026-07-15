@@ -40,10 +40,27 @@ first place, and who else in the organization is quietly depending on the old
 shape. The value here is in *knowing what to generate*, not the generation
 itself.
 
+## Try it (judges)
+
+Open a PR from the pre-made [`demo/breaking-change`](../../compare/master...demo/breaking-change)
+branch to `master` **in this repo** — no fork needed. The branch stages one
+schema break (`order_total` → `order_amount_usd`), one silent metric
+redefinition (gross revenue quietly drops refunds), and one glossary drift.
+The Action fires, and the guardian posts its full report as a PR comment.
+Can't open a PR? The exact same generated output is committed in
+[`examples/generated/`](examples/generated/).
+
 ## Status
 
-Early build — see `docs/SPEC.md` for the full design and open questions, and
-`CLAUDE.md` for the working context if you're picking this up in Claude Code.
+Core loop complete and tested (21 tests, no network needed):
+detection (dbt manifest diff + glossary drift) → blast radius (DataHub
+lineage + observed queries) → Data Contract writeback (PROPOSED) →
+deterministic compat codegen → idempotent PR comment. See
+`docs/ARCHITECTURE.md` for the system shape, `docs/adr/` for decisions,
+`docs/SPEC.md` for design history, and `CLAUDE.md` for working context.
+Remaining before submission: stand up the judge-facing DataHub instance
+(ADR-0003), run the one-time ingest (`dbt_demo_project/README.md`), and
+exercise the live path end-to-end.
 
 ## License
 
