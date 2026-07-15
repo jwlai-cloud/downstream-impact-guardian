@@ -1,0 +1,25 @@
+{
+  "entityUrn": "urn:li:dataset:(urn:li:dataPlatform:bigquery,dig-demo-sandbox.fiction_retail.fct_orders,PROD)",
+  "schema": [
+    {
+      "assertionUrn": "urn:li:assertion:fct_orders.unique_order_id"
+    },
+    {
+      "assertionUrn": "urn:li:assertion:fct_orders.not_null_order_id"
+    }
+  ],
+  "properties": [
+    {
+      "key": "proposedBy",
+      "value": "downstream-impact-guardian"
+    },
+    {
+      "key": "status",
+      "value": "PROPOSED"
+    },
+    {
+      "key": "sourcePullRequest",
+      "value": "PR #1"
+    }
+  ]
+}

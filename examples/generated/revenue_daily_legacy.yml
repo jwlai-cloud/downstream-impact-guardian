@@ -1,0 +1,8 @@
+version: 2
+
+models:
+  - name: revenue_daily_legacy
+    description: >
+      Pre-PR logic of revenue_daily, preserved verbatim by
+      Downstream Impact Guardian for consumers pinned to the old
+      metric definition.
