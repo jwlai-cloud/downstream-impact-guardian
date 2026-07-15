@@ -1,0 +1,23 @@
+[
+  {
+    "model": "fct_orders",
+    "mode": "upserted",
+    "urn": "urn:li:dataContract:75ac3dd7-5923-4747-8454-2db660c89206",
+    "payload": {
+      "entityUrn": "urn:li:dataset:(urn:li:dataPlatform:bigquery,agent-era.fiction_retail.fct_orders,PROD)",
+      "schema": [
+        {
+          "assertionUrn": "urn:li:assertion:51e740d2a5616f62d598e37ab9c7a293"
+        },
+        {
+          "assertionUrn": "urn:li:assertion:e2bbcdf726c81dbe6332f015df3b7b27"
+        }
+      ],
+      "provenance": {
+        "status": "PROPOSED",
+        "proposedBy": "downstream-impact-guardian",
+        "sourcePullRequest": "PR #99"
+      }
+    }
+  }
+]

@@ -22,6 +22,17 @@ not hand-written:
   (writeback #1) bundling the dataset's ingested dbt-test assertions, with
   PROPOSED provenance
 
-This run used offline fixture mode (see ADR-0007), which is exactly what a
-secrets-less fork PR produces; on the maintainer's DataHub instance the
-same pipeline runs live.
+- `generated/contract_payloads.json` — one contract per impacted model
+  (ADR-0009): `fct_orders` (breaking) and `revenue_daily` (drifted with
+  known consumers)
+
+The `generated/` run used offline fixture mode (see ADR-0007) — exactly
+what a secrets-less fork PR produces, and the richer narrative since the
+fixtures carry dashboards and observed queries.
+
+`live-run/` is evidence from the same pipeline against a **real self-hosted
+OSS DataHub** (2026-07-15): real lineage traversal, and a real
+`upsertDataContract` — the contract urn in that comment exists in the
+instance with `state: PENDING` and guardian provenance, verified via the
+OpenAPI endpoint. Live lineage there has no Looker/query usage ingested
+yet, which is why its blast radius is smaller than the fixture story.

@@ -1,9 +1,8 @@
 <!-- downstream-impact-guardian -->
 
-## 🔴 Downstream Impact Guardian — **CRITICAL** (score 22)
-> ⚠️ Ran in **offline fixture mode** (no DataHub credentials in this run). Lineage/query data below comes from committed fixtures; on the maintainer's instance this runs live.
+## 🟠 Downstream Impact Guardian — **HIGH** (score 8)
 
-`revenue_daily`: logic change, 2 downstream consumer(s). `fct_orders`: logic + schema change, 3 downstream consumer(s), renames `order_total`→`order_amount_usd`; 2 observed production query/queries still reference the old column(s) — guaranteed breakage. Semantic drift on glossary term **Gross Revenue**: the PR's definition no longer matches what DataHub says the business currently means by it.
+`revenue_daily`: logic change, 0 downstream consumer(s). `fct_orders`: logic + schema change, 1 downstream consumer(s), renames `order_total`→`order_amount_usd`. Semantic drift on glossary term **Gross Revenue**: the PR's definition no longer matches what DataHub says the business currently means by it.
 
 ### What changed
 
@@ -16,29 +15,7 @@
 
 | Downstream consumer | Platform | Type | Hops |
 |---|---|---|---|
-| Finance KPIs | looker | dashboard | 1 |
-| Monthly Board Pack | looker | dashboard | 1 |
-| revenue_daily | bigquery | dataset | 1 |
-| marketing.customer_ltv | bigquery | dataset | 1 |
-
-### Queries that WILL break
-
-These are real queries DataHub has observed against the old columns:
-
-**on `fct_orders`** — finance-scheduled-queries@agent-era.iam (bigquery scheduled query):
-```sql
-SELECT order_date, SUM(order_total) AS revenue
-FROM `agent-era.fiction_retail.fct_orders`
-WHERE order_status = 'completed'
-GROUP BY order_date
-```
-
-**on `fct_orders`** — analyst@example.com (bigquery console):
-```sql
-SELECT customer_id, AVG(order_total) AS aov
-FROM `agent-era.fiction_retail.fct_orders`
-GROUP BY customer_id
-```
+| revenue_daily | dbt | dataset | 1 |
 
 ### Semantic drift (DataHub glossary)
 
@@ -48,54 +25,7 @@ GROUP BY customer_id
 
 ### Writeback 1 — Data Contracts in DataHub
 
-ℹ️ **`revenue_daily`** — No DataHub credentials in this run; the exact contract payload the agent would submit is recorded below.
-
-<details><summary>Contract payload for `revenue_daily`</summary>
-
-```json
-{
-  "entityUrn": "urn:li:dataset:(urn:li:dataPlatform:bigquery,agent-era.fiction_retail.revenue_daily,PROD)",
-  "schema": [
-    {
-      "assertionUrn": "urn:li:assertion:revenue_daily.unique_order_date"
-    },
-    {
-      "assertionUrn": "urn:li:assertion:revenue_daily.not_null_order_date"
-    }
-  ],
-  "provenance": {
-    "status": "PROPOSED",
-    "proposedBy": "downstream-impact-guardian",
-    "sourcePullRequest": "PR #1"
-  }
-}
-```
-</details>
-
-ℹ️ **`fct_orders`** — No DataHub credentials in this run; the exact contract payload the agent would submit is recorded below.
-
-<details><summary>Contract payload for `fct_orders`</summary>
-
-```json
-{
-  "entityUrn": "urn:li:dataset:(urn:li:dataPlatform:bigquery,agent-era.fiction_retail.fct_orders,PROD)",
-  "schema": [
-    {
-      "assertionUrn": "urn:li:assertion:fct_orders.unique_order_id"
-    },
-    {
-      "assertionUrn": "urn:li:assertion:fct_orders.not_null_order_id"
-    }
-  ],
-  "provenance": {
-    "status": "PROPOSED",
-    "proposedBy": "downstream-impact-guardian",
-    "sourcePullRequest": "PR #1"
-  }
-}
-```
-</details>
-
+✅ **`fct_orders`** — contract `urn:li:dataContract:75ac3dd7-5923-4747-8454-2db660c89206` written (upserted), status **PROPOSED** — approving it = merging this PR after adopting the compatibility code.
 
 ### Writeback 2 — generated compatibility code (mergeable)
 

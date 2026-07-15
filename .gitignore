@@ -16,3 +16,6 @@ service-account*.json
 
 # OS
 .DS_Store
+
+# dbt local state
+dbt_demo_project/.user.yml
