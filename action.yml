@@ -77,14 +77,21 @@ runs:
 
     # `dbt parse` opens no warehouse connection; the consuming repo needs a
     # parse-able profiles.yml in the dbt project dir (env-driven is fine).
+    # Empty inputs must NOT be exported: an empty env var defeats
+    # env_var() defaults in profiles.yml ("Must specify schema").
     - name: Parse PR dbt state
       shell: bash
       working-directory: ${{ inputs.dbt-project-dir }}
       env:
         DBT_PROFILES_DIR: "."
-        GCP_PROJECT: ${{ inputs.warehouse-project }}
-        BQ_DATASET: ${{ inputs.warehouse-dataset }}
-      run: dbt parse --no-partial-parse
+      run: |
+        if [ -n "${{ inputs.warehouse-project }}" ]; then
+          export GCP_PROJECT="${{ inputs.warehouse-project }}"
+        fi
+        if [ -n "${{ inputs.warehouse-dataset }}" ]; then
+          export BQ_DATASET="${{ inputs.warehouse-dataset }}"
+        fi
+        dbt parse --no-partial-parse
 
     - name: Run Downstream Impact Guardian
       shell: bash
@@ -93,10 +100,14 @@ runs:
         DATAHUB_GMS_TOKEN: ${{ inputs.datahub-token }}
         GOOGLE_API_KEY: ${{ inputs.google-api-key }}
         GITHUB_TOKEN: ${{ inputs.github-token }}
-        GCP_PROJECT: ${{ inputs.warehouse-project }}
-        BQ_DATASET: ${{ inputs.warehouse-dataset }}
         DATAHUB_PLATFORM: ${{ inputs.datahub-platform }}
       run: |
+        if [ -n "${{ inputs.warehouse-project }}" ]; then
+          export GCP_PROJECT="${{ inputs.warehouse-project }}"
+        fi
+        if [ -n "${{ inputs.warehouse-dataset }}" ]; then
+          export BQ_DATASET="${{ inputs.warehouse-dataset }}"
+        fi
         DIR="${{ inputs.dbt-project-dir }}"
         PROD="${{ inputs.prod-manifest }}"
         [ -z "$PROD" ] && PROD="$DIR/prod_state/manifest.json"
