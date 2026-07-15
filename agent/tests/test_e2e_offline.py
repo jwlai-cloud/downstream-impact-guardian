@@ -62,6 +62,9 @@ nodes:
 
     compat = (out / "fct_orders_compat.sql").read_text()
     assert "order_amount_usd as order_total" in compat
+    # old shape must come from DataHub's live schema, not just yml docs —
+    # this column is what the finance scheduled query selects
+    assert "order_date" in compat
     legacy = (out / "revenue_daily_legacy.sql").read_text()
     assert "ref('fct_orders_compat')" in legacy
 

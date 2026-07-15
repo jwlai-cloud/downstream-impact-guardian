@@ -92,7 +92,14 @@ def run(args) -> int:
     print(f"[guardian] contract: {contract_result.mode} "
           f"{contract_result.urn or ''}")
 
-    # 5. Generate mergeable compatibility code.
+    # 5. Generate mergeable compatibility code. The compat view must
+    # reproduce what is LIVE, and DataHub — not the manifest's (possibly
+    # partial) column docs — is the authority on that. Manifest columns
+    # stay as fallback.
+    for ch in model_changes:
+        live_cols = [c["name"] for c in reader.get_schema(ch.model_name)]
+        if live_cols:
+            ch.old_columns = live_cols
     artifacts = codegen.generate_all(model_changes)
 
     # 6. Writeback 2 — PR comment (idempotent), plus artifacts on disk and

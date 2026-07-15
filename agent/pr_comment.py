@@ -55,10 +55,18 @@ def render(report: ImpactReport, contract: ContractResult,
                   "not this repo)", "",
                   "| Downstream consumer | Platform | Type | Hops |",
                   "|---|---|---|---|"]
-        for ch in report.model_changes:
-            for c in report.consumers.get(ch.model_name, []):
-                lines.append(f"| {c.name} | {c.platform} | "
-                             f"{c.entity_type} | {c.hops} |")
+        all_consumers = sorted(
+            (c for ch in report.model_changes
+             for c in report.consumers.get(ch.model_name, [])),
+            key=lambda c: c.hops)
+        seen: set[tuple] = set()
+        for c in all_consumers:
+            key = (c.name, c.platform, c.entity_type)
+            if key in seen:
+                continue  # same entity reachable from several changed models
+            seen.add(key)
+            lines.append(f"| {c.name} | {c.platform} | "
+                         f"{c.entity_type} | {c.hops} |")
         lines.append("")
 
     broken_queries = [(m, q) for m, qs in report.queries.items()

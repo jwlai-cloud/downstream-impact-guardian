@@ -9,10 +9,18 @@ models:
     columns:
       - name: order_id
         tests: [unique, not_null]
-      - name: order_total
-        description: Order value in the order currency, tax included.
+      - name: customer_id
+        description: FK to stg_customers.
+      - name: country
+        description: Customer country, ISO-3166 alpha-2.
+      - name: order_date
+        description: Date the order was placed.
       - name: order_status
         description: Lifecycle status of the order.
+      - name: order_total
+        description: Order value in the order currency, tax included.
+      - name: currency
+        description: ISO-4217 currency code.
       - name: is_fulfilled
         description: True when the order has shipped or completed.
 
