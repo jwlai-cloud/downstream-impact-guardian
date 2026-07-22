@@ -19,18 +19,18 @@ who else depends on it.
 
 Triggered on every pull request to a dbt project:
 
-1. **Detects** what actually changed — schema (DataHub schema history), logic
-   (`dbt state:modified`), and semantic definitions (DataHub glossary term
-   versioning)
+1. **Detects** what actually changed — schema and logic (prod-vs-PR dbt
+   manifest diff, dbt's own `state:modified` semantics), and semantic
+   definitions (the PR's glossary vs the live DataHub glossary)
 2. **Assesses blast radius** — cross-references DataHub lineage and query
    history to find every real downstream consumer, across systems, not just
    within this one repo
 3. **Writes back to DataHub** — proposes a Data Contract formalizing the
    dependency that was just discovered, so the next person or agent inherits
    the knowledge
-4. **Writes back to the repo** — posts a PR comment with a generated,
-   backward-compatible migration (SQL view / dbt macro) plus tests, so a data
-   team could actually merge it
+4. **Writes back to the repo** — posts a PR comment with generated,
+   backward-compatible dbt views (`*_compat` / `*_legacy`) plus tests, so a
+   data team could actually merge it
 
 ## Why this needs DataHub, not just a coding agent
 
@@ -59,7 +59,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: junwei-lai/downstream-impact-guardian@master
+      - uses: jwlai-cloud/downstream-impact-guardian@master
         with:
           dbt-project-dir: transforms          # your dbt project path
           datahub-url: ${{ secrets.DATAHUB_GMS_URL }}
@@ -104,15 +104,17 @@ the guardian reads in CI.
 
 ## Status
 
-Core loop complete and tested (21 tests, no network needed):
+Core loop complete, tested (26 tests, no network needed), and proven live in CI:
 detection (dbt manifest diff + glossary drift) → blast radius (DataHub
 lineage + observed queries) → Data Contract writeback (PROPOSED) →
 deterministic compat codegen → idempotent PR comment. See
 `docs/ARCHITECTURE.md` for the system shape, `docs/adr/` for decisions,
-`docs/SPEC.md` for design history, and `CLAUDE.md` for working context.
-Remaining before submission: stand up the judge-facing DataHub instance
-(ADR-0003), run the one-time ingest (`dbt_demo_project/README.md`), and
-exercise the live path end-to-end.
+`docs/SPEC.md` for design history, `docs/PROGRESS.md` for current state,
+and `CLAUDE.md` for working context. The live path (lineage, glossary
+drift, `upsertDataContract`) is verified against a real self-hosted OSS
+instance; the standing demo PR (#1) carries a real guardian report posted
+by the Action. Remaining before submission: judge-facing instance
+(`docs/ORACLE_BRINGUP.md`), repo secrets, demo video.
 
 ## License
 

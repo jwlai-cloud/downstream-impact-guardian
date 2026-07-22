@@ -1,0 +1,25 @@
+name: tests
+
+# Unit tests for the agent pipeline — distinct from the guardian check
+# (downstream-impact-guardian-check.yml), which RUNS the agent on dbt PRs.
+on:
+  pull_request:
+    paths:
+      - "agent/**"
+      - ".github/workflows/tests.yml"
+  push:
+    branches: [master]
+    paths:
+      - "agent/**"
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -r agent/requirements.txt pytest
+      - run: python -m pytest agent/tests/ -q

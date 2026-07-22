@@ -30,7 +30,7 @@ depend on the LLM.
 
 ```bash
 pip install -r agent/requirements.txt
-python -m pytest agent/tests/ -q          # 21 tests, no network
+python -m pytest agent/tests/ -q          # 26 tests, no network
 python agent/main.py --pr-number 1 --mode offline --no-post \
   --pr-manifest dbt_demo_project/prod_state/manifest.json
 ```
