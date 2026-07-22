@@ -38,6 +38,21 @@ def test_logic_only_change():
     assert not changes[0].breaking
 
 
+def test_deleted_model_detected_as_breaking():
+    old = mk_manifest([("fct_orders", ["order_id", "order_total"],
+                        "select order_id, order_total from t"),
+                       ("keeper", ["x"], "select x from t")])
+    new = mk_manifest([("keeper", ["x"], "select x from t")])
+    changes = dbt_state.diff_manifests(old, new)
+    assert len(changes) == 1
+    ch = changes[0]
+    assert ch.model_name == "fct_orders"
+    assert ch.kinds == {"removed"}
+    assert ch.breaking
+    assert ch.old_columns == ["order_id", "order_total"]
+    assert "order_total" in ch.old_sql
+
+
 def test_new_model_is_additive():
     old = mk_manifest([("a", ["x"], "select x from t")])
     new = mk_manifest([("a", ["x"], "select x from t"),

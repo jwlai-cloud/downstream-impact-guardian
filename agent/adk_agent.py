@@ -110,7 +110,8 @@ def enrich_narrative(report: ImpactReport, reader, api_key: str) -> None:
     try:
         import os
         os.environ.setdefault("GOOGLE_API_KEY", api_key)
-        text = asyncio.run(_run(report, reader))
+        # Bounded: a hung model call must not stall the Action job
+        text = asyncio.run(asyncio.wait_for(_run(report, reader), timeout=120))
         if text:
             report.narrative = text
             report.narrative_source = "gemini-adk"

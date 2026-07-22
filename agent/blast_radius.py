@@ -50,10 +50,13 @@ def assess(model_changes: list[ModelChange],
 
         # Does any observed query in the wild reference a column this PR
         # removes or renames? That is a guaranteed break, not a maybe.
+        # A DELETED model breaks every query against it unconditionally —
+        # column-token matching would miss `SELECT *` / `COUNT(*)`.
         changed_cols = _changed_column_names(change)
         for q in queries.get(change.model_name, []):
-            hit = any(re.search(rf"\b{re.escape(col)}\b", q.sql, re.IGNORECASE)
-                      for col in changed_cols)
+            hit = ("removed" in change.kinds or
+                   any(re.search(rf"\b{re.escape(col)}\b", q.sql, re.IGNORECASE)
+                       for col in changed_cols))
             q.references_changed_column = hit
             if hit:
                 score += W_QUERY_HITS_CHANGED_COLUMN
@@ -83,7 +86,9 @@ def _deterministic_narrative(r: ImpactReport) -> str:
         n_cons = len(r.consumers.get(ch.model_name, []))
         breaking_qs = sum(1 for q in r.queries.get(ch.model_name, [])
                           if q.references_changed_column)
-        s = f"`{ch.model_name}`: {kinds} change, {n_cons} downstream consumer(s)"
+        s = (f"`{ch.model_name}`: MODEL DELETED, {n_cons} downstream consumer(s)"
+             if "removed" in ch.kinds else
+             f"`{ch.model_name}`: {kinds} change, {n_cons} downstream consumer(s)")
         if ch.renames:
             s += ", renames " + ", ".join(f"`{o}`→`{n}`" for o, n in ch.renames)
         if breaking_qs:

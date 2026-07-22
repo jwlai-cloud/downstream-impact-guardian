@@ -43,6 +43,8 @@ def render(report: ImpactReport, contracts: list[ContractResult],
                 details.append("added: " + ", ".join(f"`{c}`" for c in added))
             if "logic" in ch.kinds:
                 details.append("SQL logic modified")
+            if "removed" in ch.kinds:
+                details.append("**model deleted in this PR**")
             lines.append(f"| `{ch.model_name}` | "
                          f"{' + '.join(sorted(ch.kinds))} | "
                          f"{'; '.join(details)} |")
@@ -124,8 +126,8 @@ def render(report: ImpactReport, contracts: list[ContractResult],
         lines += ["### Writeback 2 — generated compatibility code "
                   "(mergeable)", ""]
         for art in artifacts:
-            flag = (" ⚠️ **needs human mapping** (a column was removed with "
-                    "no replacement)" if art.requires_human else "")
+            flag = (" ⚠️ **needs human attention** (unmappable pieces are "
+                    "marked in the SQL)" if art.requires_human else "")
             lines += [f"**`models/compat/{art.view_name}.sql`**{flag}",
                       "```sql", art.sql.rstrip(), "```", "",
                       f"**`models/compat/{art.view_name}.yml`**",

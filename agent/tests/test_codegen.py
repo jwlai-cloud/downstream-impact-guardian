@@ -55,6 +55,64 @@ def test_legacy_view_carries_old_sql_and_retargets_refs():
     assert "!= 'cancelled'" in legacy.sql
 
 
+def test_deleted_model_gets_legacy_view():
+    ch = ModelChange(
+        model_name="fct_orders", unique_id="model.f.fct_orders",
+        kinds={"removed"},
+        old_sql="select order_id, order_total from {{ ref('stg_orders') }}",
+        old_columns=["order_id", "order_total"],
+    )
+    arts = codegen.generate_all([ch])
+    assert [a.view_name for a in arts] == ["fct_orders_legacy"]
+    assert "select order_id, order_total" in arts[0].sql
+    assert "DELETES the model" in arts[0].schema_yml
+
+
+def test_cascading_deletion_retargets_legacy_refs():
+    """Upstream AND downstream deleted in one PR: downstream's legacy view
+    must ref the upstream's legacy view, not the deleted model."""
+    up = ModelChange(model_name="fct_orders", unique_id="model.f.fct_orders",
+                     kinds={"removed"},
+                     old_sql="select * from {{ ref('stg_orders') }}",
+                     old_columns=["order_id"])
+    down = ModelChange(
+        model_name="revenue_daily", unique_id="model.f.revenue_daily",
+        kinds={"removed"},
+        old_sql="select order_date, sum(order_total) as gross_revenue\n"
+                "from {{ ref('fct_orders') }}\ngroup by order_date",
+        old_columns=["order_date"])
+    arts = codegen.generate_all([up, down])
+    names = {a.view_name for a in arts}
+    assert names == {"fct_orders_legacy", "revenue_daily_legacy"}
+    down_art = next(a for a in arts if a.view_name == "revenue_daily_legacy")
+    assert "ref('fct_orders_legacy')" in down_art.sql
+    up_art = next(a for a in arts if a.view_name == "fct_orders_legacy")
+    # a model's own legacy view must not rewrite its own name
+    assert "ref('stg_orders')" in up_art.sql
+
+
+def test_ref_to_deleted_upstream_without_sql_is_flagged():
+    """Upstream deleted with NO recoverable SQL: downstream legacy view
+    can't be auto-fixed — must be flagged, never silently uncompilable."""
+    up = ModelChange(model_name="mystery_model", unique_id="model.f.mystery",
+                     kinds={"removed"}, old_sql="")
+    down = ModelChange(
+        model_name="revenue_daily", unique_id="model.f.revenue_daily",
+        kinds={"removed"},
+        old_sql="select * from {{ ref('mystery_model') }}",
+        old_columns=["order_date"])
+    arts = codegen.generate_all([up, down])
+    assert [a.view_name for a in arts] == ["revenue_daily_legacy"]
+    assert arts[0].requires_human
+    assert "FIXME: model deleted in this PR" in arts[0].sql
+
+
+def test_deleted_model_without_sql_gets_nothing():
+    ch = ModelChange(model_name="m", unique_id="model.f.m",
+                     kinds={"removed"}, old_sql="")
+    assert codegen.generate_all([ch]) == []
+
+
 def test_schema_plus_logic_change_gets_compat_not_legacy():
     ch = _rename_change()
     ch.kinds.add("logic")
