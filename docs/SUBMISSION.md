@@ -226,6 +226,16 @@ Two invariants make it trustworthy rather than magical:
 - **The one-click demo UI** (a button that opens a real breaking PR and
   narrates the run live) — the GitHub-API client and mock server are
   already built and tested in `tools/demo_ui/`.
+- **Ingestion-time trigger for non-dbt producers.** v1's trigger is
+  PR-time manifest diffing — teams loading BigQuery with plain jobs (no
+  dbt, sometimes no PR) are visible as *victims* in the blast radius but
+  not as change-initiators. DataHub's metadata-change events close that:
+  a reactive guardian variant subscribing to schema-aspect changes on any
+  platform's tables runs the same blast-radius + contract pipeline and
+  notifies via Slack instead of a PR comment. Also on this axis:
+  column-level lineage (OSS-supported for dbt/BigQuery) + sqlglot
+  expression diffing to shrink blast radius from "everything downstream
+  of the model" to "consumers of the changed column."
 - **Incident memory as a temporal knowledge graph.** DataHub's aspects
   are event-sourced; layering a Graphiti-style bi-temporal graph over the
   guardian's findings would let the agent remember incidents across PRs —
