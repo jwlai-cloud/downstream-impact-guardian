@@ -12,12 +12,26 @@ Generation & Development
 
 ## Inspiration
 
-Every data team has lived this PR: someone renames a column in a dbt
-model, CI is green, tests pass, it merges — and three days later a
-dashboard two teams away is silently wrong. The repo told the truth:
-*nothing in this repo broke.* The repo just couldn't see the finance
-team's scheduled query, the ML feature pipeline, or the exec dashboard
-that all read from that table.
+We're a data team, and we live in the middle of the blast zone. Upstream,
+the ingestion team ships a change: if it's a sudden schema change, our
+transformations fail loudly — annoying, but at least it pages someone. The
+worst case is quieter: a *minor logical change to a field* slips through,
+every query still runs, and the damage surfaces as **incorrect measures**
+in the downstream data layer. The assumptions broke; nobody had a data
+contract saying they couldn't. Weeks later an analyst or a business user
+notices a number that feels wrong, and someone gets to spend days tracing
+it back — dashboard, to mart, to staging, to ingestion.
+
+And we're not innocent either: our own layer's changes break legacy
+dashboards downstream whenever we forget to tell the analytics team. Same
+failure, one seat over.
+
+The repo told the truth the whole time: *nothing in this repo broke.* The
+repo just couldn't see the finance team's scheduled query, the ML feature
+pipeline, or the exec dashboard reading from that table. DataHub is the
+source of truth for that cross-system picture — what we needed was an
+agent that cross-references it on every PR: not just schema, but columnar
+logic and semantic definition changes too.
 
 That blind spot is structural. No amount of in-repo testing fixes it,
 because the blast radius of a schema or logic change lives *across*
@@ -190,6 +204,11 @@ Two invariants make it trustworthy rather than magical:
 - **The one-click demo UI** (a button that opens a real breaking PR and
   narrates the run live) — the GitHub-API client and mock server are
   already built and tested in `tools/demo_ui/`.
+- **Incident memory as a temporal knowledge graph.** DataHub's aspects
+  are event-sourced; layering a Graphiti-style bi-temporal graph over the
+  guardian's findings would let the agent remember incidents across PRs —
+  "this table's contract has been broken three times, twice by the same
+  upstream job" — turning per-PR judgment into longitudinal judgment.
 
 ## Built with
 
