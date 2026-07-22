@@ -123,9 +123,9 @@ runs:
         fi
         PROD="${INPUT_PROD_MANIFEST:-$INPUT_DBT_PROJECT_DIR/prod_state/manifest.json}"
         GLOSS="${INPUT_GLOSSARY_FILE:-$INPUT_DBT_PROJECT_DIR/datahub/business_glossary.yml}"
-        STRICT=""
+        STRICT_ARGS=()
         if [ "$INPUT_STRICT" = "true" ]; then
-          STRICT="--strict"
+          STRICT_ARGS=("--strict")
         fi
         python "$ACTION_PATH/agent/main.py" \
           --pr-number "$INPUT_PR_NUMBER" \
@@ -133,4 +133,4 @@ runs:
           --pr-manifest "$INPUT_DBT_PROJECT_DIR/target/manifest.json" \
           --glossary "$GLOSS" \
           --output-dir "$INPUT_OUTPUT_DIR" \
-          $STRICT
+          "${STRICT_ARGS[@]}"
