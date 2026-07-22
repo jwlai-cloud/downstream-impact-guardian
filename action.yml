@@ -60,10 +60,13 @@ inputs:
 runs:
   using: composite
   steps:
+    # No pip cache: `cache: pip` requires a requirements file in the
+    # CONSUMER repo's workspace, but ours ships inside the action itself —
+    # cross-repo consumers would fail the cache lookup (found by the
+    # fiction-retail-dbt consumer repo's first run).
     - uses: actions/setup-python@v5
       with:
         python-version: "3.11"
-        cache: pip
 
     - name: Install guardian
       shell: bash
