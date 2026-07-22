@@ -94,6 +94,29 @@ the historical snapshot reference for what changed. The agent's
 architecture is scale-independent — it reads whatever lineage the catalog
 holds, whether that's four models or four thousand.
 
+**The impact design, in four moves** (the part reviewers should slow
+down on):
+
+1. **Two orthogonal ratings.** *Severity* is PR-level (LOW→CRITICAL,
+   deterministic score — drives advisory vs strict). *Impact level* is
+   per-consumer: 🔴 BROKEN / 🟠 DISTORTED / 🟡 ADVISORY, honestly labeled
+   as the worst-case upper bound from the upstream change kind.
+2. **Stakeholders come from the catalog.** Each impacted consumer's
+   DataHub owners appear right in the blast-radius table — and an
+   *unowned* consumer is surfaced as a governance finding, never hidden.
+   The informing protocol: comment always; Slack webhook on
+   HIGH/CRITICAL; strict mode blocks CRITICAL; the Data Contract stays
+   the durable record.
+3. **Column-level evidence today.** sqlglot expression diffing attributes
+   logic changes to specific fields; observed queries are matched per
+   column; a Column-level effects table shows facts, not inference.
+4. **A precision ladder for consumer impact**: *declared* column
+   dependencies (consumers state what they read, via their own dbt meta
+   ingested into DataHub — match = BROKEN as fact, no-match = SAFE) >
+   *derived* column-level lineage (one ingestion flag + querying from the
+   changed column's schemaField urn — roadmap) > *worst-case* (always
+   available). Each rung degrades honestly to the one below.
+
 Two invariants make it trustworthy rather than magical:
 
 - **DataHub only ever reflects reality.** The PR is read locally as a
@@ -270,6 +293,18 @@ before the adoption snippet:**
 > open — who breaks? — using the only system that knows: the metadata
 > graph. Schema, metric, and meaning. Checked at PR time, before
 > anything ships.
+
+**Design-intro beat (~15s VO), place between the comment reveal and the
+architecture flash:**
+
+> Under the hood: severity for the PR, impact level per victim — broken,
+> distorted, or advisory — each with the owners to inform, pulled from
+> DataHub. Column-level evidence from SQL parsing and observed queries.
+> And when a consumer declares the columns it reads, the guardian can say
+> the one thing every data team wants to hear: you're safe.
+
+On-screen beats for it: `Severity → the PR` · `Impact → each victim` ·
+`Stakeholders → from the catalog` · `declared > derived > worst-case`.
 
 On-screen beats: `Pinterest: schema = cross-system contract ✓` →
 `but: no lineage · no catalog · structure only` →

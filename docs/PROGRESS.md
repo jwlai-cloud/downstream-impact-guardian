@@ -71,3 +71,24 @@ brand-new `tests.yml` — the unit suite failed on PR #3's merge ref because
 master's glossary now drifted against the fixtures. Reverted via PR #4;
 demo recreated as **draft** PR #5 (drafts cannot be merged). Lesson
 encoded: the standing demo PR stays a draft forever.
+
+## Session log (2026-07-22, day 2)
+
+Shipped and merged: deleted-model detection (a removed model was previously
+invisible — now breaking + every observed query counted + `*_legacy` view;
+three CodeRabbit review rounds), reusable-action portability fix
+(cross-repo pip-cache bug found by the consumer repo's first run), the
+one-button Vercel demo UI (XSS-hardened: bot-author check + DOMPurify),
+living docs + tests CI. Awaiting merge: #10 per-column expression
+attribution (sqlglot), #11 narrative model providers (Gemini default,
+OpenAI/Qwen via LiteLLM).
+
+Demo surface now: consumer repo `fiction-retail-dbt` with three standing
+draft PRs — rename+drift+glossary (CRITICAL 22), whole-model deletion
+(CRITICAL 10), silent metric drift with suspected semantic drift (HIGH 6)
+— all produced by the PUBLISHED action cross-repo. Repo protections
+applied across all hackathon repos.
+
+Still user-blocked: PAT + Vercel import (button demo go-live), Oracle
+credit-card retry (judge instance; Cloud trials verified sales-gated),
+OpenAI/Qwen key as repo secret (narrative live), then filming.
