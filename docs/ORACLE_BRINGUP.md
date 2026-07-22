@@ -127,3 +127,19 @@ ADR-0003 still says GCE e2-standard-2. This runbook is the $0 alternative;
 if we execute it and it holds up, amend ADR-0003 rather than duplicating a
 new ADR. Both paths use identical DataHub setup + ingest steps from
 `dbt_demo_project/README.md` — only the box differs.
+
+## Security posture (read before exposing the instance)
+
+- **Plain HTTP means the bearer token travels unencrypted.** Acceptable
+  trade-off ONLY because: the token is judge-scoped read-only, expires
+  Sep 1, the catalog holds fiction data, and the instance dies after
+  judging. If you want TLS anyway: put Caddy in front
+  (`caddy reverse-proxy --from <domain> --to :9002` + one more for 8080)
+  with a free Let's Encrypt cert — needs a domain name.
+- Change the default `datahub`/`datahub` password FIRST (step 5), enable
+  `METADATA_SERVICE_AUTH_ENABLED=true`, and create a separate read-only
+  `judge` user — its token + login are what go in the Devpost testing
+  field, never the admin's.
+- Worst-case full compromise = a vandalized demo catalog of fictional
+  retail data, rebuildable in minutes with `scripts/ingest_all.sh`.
+  Nothing sensitive is ever ingested; keep it that way.

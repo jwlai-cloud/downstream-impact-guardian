@@ -12,12 +12,26 @@ Generation & Development
 
 ## Inspiration
 
-Every data team has lived this PR: someone renames a column in a dbt
-model, CI is green, tests pass, it merges — and three days later a
-dashboard two teams away is silently wrong. The repo told the truth:
-*nothing in this repo broke.* The repo just couldn't see the finance
-team's scheduled query, the ML feature pipeline, or the exec dashboard
-that all read from that table.
+We're a data team, and we live in the middle of the blast zone. Upstream,
+the ingestion team ships a change: if it's a sudden schema change, our
+transformations fail loudly — annoying, but at least it pages someone. The
+worst case is quieter: a *minor logical change to a field* slips through,
+every query still runs, and the damage surfaces as **incorrect measures**
+in the downstream data layer. The assumptions broke; nobody had a data
+contract saying they couldn't. Weeks later an analyst or a business user
+notices a number that feels wrong, and someone gets to spend days tracing
+it back — dashboard, to mart, to staging, to ingestion.
+
+And we're not innocent either: our own layer's changes break legacy
+dashboards downstream whenever we forget to tell the analytics team. Same
+failure, one seat over.
+
+The repo told the truth the whole time: *nothing in this repo broke.* The
+repo just couldn't see the finance team's scheduled query, the ML feature
+pipeline, or the exec dashboard reading from that table. DataHub is the
+source of truth for that cross-system picture — what we needed was an
+agent that cross-references it on every PR: not just schema, but columnar
+logic and semantic definition changes too.
 
 That blind spot is structural. No amount of in-repo testing fixes it,
 because the blast radius of a schema or logic change lives *across*
@@ -66,6 +80,19 @@ On every pull request it:
    ADK/Gemini-narrated impact story plus generated, mergeable
    compatibility code — `*_compat` / `*_legacy` dbt views and schema.yml
    tests that keep old consumers alive through the change.
+
+**Demo scale, honestly.** The demo world is deliberately small: a
+four-model dbt project, and the downstream dashboard/query lineage in
+offline mode comes from mocked fixtures (clearly labeled in the report).
+Don't let the size hide the shape of the real problem. In production this
+is **multiple repos, thousands of models, and Looker dashboards
+everywhere** — and each team has access to only a few of those repos, so
+*no one* can see the whole graph from where they sit. That's precisely why
+the agent's judgment must come from the catalog and not the codebase:
+DataHub is the catalog center, the source of truth for what's live, and
+the historical snapshot reference for what changed. The agent's
+architecture is scale-independent — it reads whatever lineage the catalog
+holds, whether that's four models or four thousand.
 
 Two invariants make it trustworthy rather than magical:
 
@@ -187,9 +214,23 @@ Two invariants make it trustworthy rather than magical:
 - **Richer rename detection** — today's heuristic handles the
   1-removed/1-added case and honestly flags the rest for a human;
   column-level lineage could close the gap.
+- **Column-expression diffing (removing the due-diligence dependency).**
+  Semantic drift detection currently leans on glossary terms being
+  attached — one act of human diligence per column. Parsing model SQL
+  (sqlglot) to map each column to its expression would make "which
+  field's logic changed" metadata-free, with the LLM classifying
+  meaning-altering vs mechanical changes — and would let the guardian
+  *invert* the diligence problem: spot metric-shaped columns with no
+  glossary term and propose one, manufacturing the governance it relies
+  on.
 - **The one-click demo UI** (a button that opens a real breaking PR and
   narrates the run live) — the GitHub-API client and mock server are
   already built and tested in `tools/demo_ui/`.
+- **Incident memory as a temporal knowledge graph.** DataHub's aspects
+  are event-sourced; layering a Graphiti-style bi-temporal graph over the
+  guardian's findings would let the agent remember incidents across PRs —
+  "this table's contract has been broken three times, twice by the same
+  upstream job" — turning per-PR judgment into longitudinal judgment.
 
 ## Built with
 
@@ -236,3 +277,34 @@ On-screen beats: `Pinterest: schema = cross-system contract ✓` →
 
 Full structured comparison (similar/different/honest-framing):
 docs/SPEC.md §12.
+
+### Shot list (~2:50 total — verify the platform's hard limit before locking)
+
+**Recording strategy: capture everything RAW at natural speed, then
+accelerate in post** (`ffmpeg setpts` speed-ramps; dead time excised, not
+skipped on camera). Raw captures stay in `video/raw/` (gitignored) so any
+beat can be re-cut without re-shooting. GitHub scrolls driven by
+Playwright, not hand-mousing — deterministic re-takes.
+
+Sources: tab A = GitHub PR #5 · tab B = Actions run · tab C = DataHub UI
+(local quickstart) · tab D = how-it-works artifact · T = terminal ·
+S = static diagram.
+
+| # | Time | Src | On screen | Narration / overlay | Technique |
+|---|---|---|---|---|---|
+| 1 | 0:00–0:08 | S | Black slate → title | "Every data team has lived this PR." | title fade-in |
+| 2 | 0:08–0:20 | A | PR #5 diff, slow scroll over the 3 changes | "A column rename. A metric quietly redefined. A glossary edit. Tests pass. CI is green." | raw scroll @1×, cut tight |
+| 3 | 0:20–0:28 | A | Checks section, bot reviews visible, all green | "Nothing in this repo knows anything is wrong." | highlight box on green checks |
+| 4 | 0:28–0:40 | B | Action run: steps executing start-to-finish | "On every PR, the guardian wakes up inside GitHub Actions — no server, no bot host." | **raw 48 s → 8× ≈ 6 s** timelapse, then 1× on the final green step |
+| 5 | 0:40–1:00 | A | Comment reveal: 🔴 CRITICAL header | "It read DataHub — and found what the repo can't see." | hard cut, zoom-in on severity line |
+| 6 | 1:00–1:15 | A | Blast radius table | "A finance dashboard. A marketing feature table. The board pack. None of them live in this repo." | Ken Burns across table rows |
+| 7 | 1:15–1:30 | A | "Queries that WILL break" section | "These are real observed queries — they still reference the old column. Guaranteed breakage." | highlight box on `order_total` in SQL |
+| 8 | 1:30–1:45 | A | Semantic drift + generated compat view | "And it doesn't just warn — it writes the fix. A compat view, mergeable as-is." | zoom on `order_amount_usd as order_total` |
+| 9 | 1:45–2:00 | C | DataHub lineage graph → contract entity (PENDING + provenance) | "Writeback two: a Data Contract, proposed into the catalog — the next team inherits the knowledge." | raw UI nav @1×, speed-ramp 2× between screens |
+| 10 | 2:00–2:25 | S/D | Architecture diagram, then Pinterest edge beats | Edge segment VO (appendix above) — end on the scale line: "The demo is four models and mocked dashboards — honestly labeled. Production is thousands of models across repos no single team can see. That's why the judgment comes from the catalog, not the codebase." | text-overlay beats: `Pinterest ✓` → `no lineage · structure only` → `missing half = DataHub` → `4 models here · 4,000 in prod · same agent` |
+| 11 | 2:25–2:33 | T | `pytest -q` → `26 passed in 0.2s` | "Deterministic core — the LLM narrates, it never scores and never writes the merged code." | big number overlay: **26 tests · 0.2 s** |
+| 12 | 2:33–2:43 | S | Adoption `uses:` block | "One block in any dbt repo. The runner is the bot." | code overlay, typewriter reveal |
+| 13 | 2:43–2:50 | S | Repo URL + "open the demo PR yourself" | "Downstream Impact Guardian. The PR looks fine. DataHub knows better." | hold ≥5 s, readable |
+
+Post checklist: sound-off watchability pass; every number matches this doc
+(26 tests, CRITICAL 22, 48 s run); total runtime under the platform limit.

@@ -43,3 +43,10 @@ proposedBy/sourcePullRequest custom properties via the SDK. Also verified:
 upsert is entity-scoped (re-running updates the same contract urn), and
 dbt-test assertions attach to the **dbt sibling** entity, not the warehouse
 one — the client queries both siblings and merges.
+
+## Addendum (2026-07-22)
+
+The rejected alternative was never real: DataHub Cloud has no self-serve
+free trial — it is sales-contact gated — and the hackathon provides no
+hosted tenant to participants. Self-hosted OSS was the only viable path,
+not merely the lower-risk one.
