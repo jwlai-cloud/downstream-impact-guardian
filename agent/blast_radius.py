@@ -91,6 +91,9 @@ def _deterministic_narrative(r: ImpactReport) -> str:
              f"`{ch.model_name}`: {kinds} change, {n_cons} downstream consumer(s)")
         if ch.renames:
             s += ", renames " + ", ".join(f"`{o}`→`{n}`" for o, n in ch.renames)
+        if ch.changed_expressions:
+            s += (", expression changed for " +
+                  ", ".join(f"`{c}`" for c in ch.changed_expressions))
         if breaking_qs:
             s += (f"; {breaking_qs} observed production query/queries still "
                   f"reference the old column(s) — guaranteed breakage")

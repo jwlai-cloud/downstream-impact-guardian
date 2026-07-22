@@ -22,6 +22,10 @@ class ModelChange:
     old_sql: str = ""
     new_sql: str = ""
     old_columns: list[str] = field(default_factory=list)  # ordered, pre-change
+    # Columns whose SELECT expression changed (sqlglot diff). Attribution
+    # detail only: filters/joins changes alter ALL columns' values, so
+    # suspicion/scoring never narrows to this list. None-parse -> empty.
+    changed_expressions: list[str] = field(default_factory=list)
 
     @property
     def breaking(self) -> bool:
