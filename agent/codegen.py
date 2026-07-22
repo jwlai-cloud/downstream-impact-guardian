@@ -73,17 +73,22 @@ def generate_compat_view(change: ModelChange) -> CompatArtifact | None:
 
 def generate_legacy_view(change: ModelChange,
                          compat_views: dict[str, str]) -> CompatArtifact | None:
-    """Logic-only change -> a `<model>_legacy` view carrying the OLD SQL, so
-    consumers who depend on the old metric definition keep a working ref.
-    If an upstream model got a compat view in the same PR, retarget refs at
-    it so the legacy SQL still compiles."""
-    if "logic" not in change.kinds or "schema" in change.kinds:
+    """Logic-only change, or a DELETED model -> a `<model>_legacy` view
+    carrying the OLD SQL, so consumers keep a working relation. If an
+    upstream model got a compat view in the same PR, retarget refs at it so
+    the legacy SQL still compiles."""
+    is_removed = "removed" in change.kinds
+    is_logic_only = "logic" in change.kinds and "schema" not in change.kinds
+    if not (is_removed or is_logic_only) or not change.old_sql.strip():
         return None
     old_sql = change.old_sql
     for model, compat in compat_views.items():
         old_sql = old_sql.replace(f"ref('{model}')", f"ref('{compat}')")
 
     view_name = f"{change.model_name}_legacy"
+    why = ("this PR DELETES the model; consumers need a relation to migrate "
+           "from" if is_removed else
+           "consumers pinned to the old metric definition keep a working ref")
     sql = (HEADER.format(model=change.model_name)
            + "{{ config(materialized='view') }}\n\n"
            + old_sql.strip() + "\n")
@@ -93,9 +98,8 @@ def generate_legacy_view(change: ModelChange,
         models:
           - name: {view_name}
             description: >
-              Pre-PR logic of {change.model_name}, preserved verbatim by
-              Downstream Impact Guardian for consumers pinned to the old
-              metric definition.
+              Pre-PR definition of {change.model_name}, preserved verbatim
+              by Downstream Impact Guardian — {why}.
         """)
     return CompatArtifact(view_name=view_name, sql=sql, schema_yml=yml,
                           for_model=change.model_name)

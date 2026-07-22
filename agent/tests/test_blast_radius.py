@@ -33,6 +33,21 @@ def test_query_not_referencing_changed_column_scores_lower():
     assert report.score == 3  # breaking only
 
 
+def test_deleted_model_breaks_every_observed_query():
+    ch = ModelChange(model_name="fct_orders",
+                     unique_id="model.f.fct_orders", kinds={"removed"},
+                     old_columns=["order_id", "order_total"])
+    queries = {"fct_orders": [
+        QueryUsage(sql="SELECT order_id FROM fct_orders"),
+        QueryUsage(sql="SELECT SUM(order_total) FROM fct_orders"),
+    ]}
+    report = blast_radius.assess([ch], [], {}, queries)
+    assert all(q.references_changed_column for q in queries["fct_orders"])
+    assert "MODEL DELETED" in report.narrative
+    # 3 breaking + 2 query hits * 3 = 9 -> CRITICAL
+    assert report.severity == "CRITICAL"
+
+
 def test_logic_only_no_consumers_is_low():
     ch = ModelChange(model_name="m", unique_id="model.x.m", kinds={"logic"})
     report = blast_radius.assess([ch], [], {}, {})

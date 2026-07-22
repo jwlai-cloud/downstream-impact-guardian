@@ -25,6 +25,8 @@ class ModelChange:
 
     @property
     def breaking(self) -> bool:
+        if "removed" in self.kinds:  # whole model deleted
+            return True
         removed = {c.name for c in self.columns if c.change == "removed"}
         return bool(removed) or bool(self.renames)
 

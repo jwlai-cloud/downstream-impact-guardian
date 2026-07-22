@@ -77,6 +77,19 @@ def diff_manifests(prod: dict, pr: dict) -> list[ModelChange]:
         if change.kinds:
             changes.append(change)
 
+    # Deleted models: the most breaking change a PR can make. They never
+    # appear in the PR-side loop above, so sweep prod-only models.
+    for uid, old in prod_models.items():
+        if uid in pr_models:
+            continue
+        changes.append(ModelChange(
+            model_name=old["name"],
+            unique_id=uid,
+            kinds={"removed"},
+            old_sql=old.get("raw_code", ""),
+            old_columns=list(old.get("columns", {})),
+        ))
+
     return changes
 
 

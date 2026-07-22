@@ -43,6 +43,8 @@ def render(report: ImpactReport, contracts: list[ContractResult],
                 details.append("added: " + ", ".join(f"`{c}`" for c in added))
             if "logic" in ch.kinds:
                 details.append("SQL logic modified")
+            if "removed" in ch.kinds:
+                details.append("**model deleted in this PR**")
             lines.append(f"| `{ch.model_name}` | "
                          f"{' + '.join(sorted(ch.kinds))} | "
                          f"{'; '.join(details)} |")

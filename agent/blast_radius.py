@@ -24,6 +24,9 @@ THRESHOLDS = [(9, "CRITICAL"), (6, "HIGH"), (3, "MEDIUM"), (0, "LOW")]
 
 
 def _changed_column_names(change: ModelChange) -> set[str]:
+    if "removed" in change.kinds:
+        # whole model gone: every observed query against it breaks
+        return set(change.old_columns) or {change.model_name}
     names = {c.name for c in change.columns if c.change in ("removed", "type_changed")}
     names |= {old for old, _ in change.renames}
     return names
@@ -83,7 +86,9 @@ def _deterministic_narrative(r: ImpactReport) -> str:
         n_cons = len(r.consumers.get(ch.model_name, []))
         breaking_qs = sum(1 for q in r.queries.get(ch.model_name, [])
                           if q.references_changed_column)
-        s = f"`{ch.model_name}`: {kinds} change, {n_cons} downstream consumer(s)"
+        s = (f"`{ch.model_name}`: MODEL DELETED, {n_cons} downstream consumer(s)"
+             if "removed" in ch.kinds else
+             f"`{ch.model_name}`: {kinds} change, {n_cons} downstream consumer(s)")
         if ch.renames:
             s += ", renames " + ", ".join(f"`{o}`→`{n}`" for o, n in ch.renames)
         if breaking_qs:

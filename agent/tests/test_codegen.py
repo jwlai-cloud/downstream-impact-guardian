@@ -55,6 +55,25 @@ def test_legacy_view_carries_old_sql_and_retargets_refs():
     assert "!= 'cancelled'" in legacy.sql
 
 
+def test_deleted_model_gets_legacy_view():
+    ch = ModelChange(
+        model_name="fct_orders", unique_id="model.f.fct_orders",
+        kinds={"removed"},
+        old_sql="select order_id, order_total from {{ ref('stg_orders') }}",
+        old_columns=["order_id", "order_total"],
+    )
+    arts = codegen.generate_all([ch])
+    assert [a.view_name for a in arts] == ["fct_orders_legacy"]
+    assert "select order_id, order_total" in arts[0].sql
+    assert "DELETES the model" in arts[0].schema_yml
+
+
+def test_deleted_model_without_sql_gets_nothing():
+    ch = ModelChange(model_name="m", unique_id="model.f.m",
+                     kinds={"removed"}, old_sql="")
+    assert codegen.generate_all([ch]) == []
+
+
 def test_schema_plus_logic_change_gets_compat_not_legacy():
     ch = _rename_change()
     ch.kinds.add("logic")
