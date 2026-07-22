@@ -63,7 +63,8 @@ def render(report: ImpactReport, contracts: list[ContractResult],
                   "Stakeholders to inform |",
                   "|---|---|---|---|---|"]
         impact_badge = {"BROKEN": "🔴 BROKEN", "DISTORTED": "🟠 DISTORTED",
-                        "ADVISORY": "🟡 ADVISORY", "": "—"}
+                        "ADVISORY": "🟡 ADVISORY",
+                        "SAFE": "🟢 SAFE (declared)", "": "—"}
         all_consumers = sorted(
             (c for ch in report.model_changes
              for c in report.consumers.get(ch.model_name, [])),
@@ -81,10 +82,11 @@ def render(report: ImpactReport, contracts: list[ContractResult],
                          f"{owners} |")
         lines.append("")
         lines.append("> Impact is the honest upper bound from the upstream "
-                     "change kind — a consumer not touching the changed "
-                     "columns is safe (cross-check the changed-column list "
-                     "above). Column-level lineage will refine this per "
-                     "consumer.")
+                     "change kind — except 🟢 SAFE rows, which are FACTS: "
+                     "those consumers declared the columns they read "
+                     "(`depends_on_columns` in their own dbt meta) and none "
+                     "were touched. Declare yours to earn the same verdict; "
+                     "column-level lineage will refine the rest.")
         lines.append("")
 
     # Column-level effects: per changed column, the EVIDENCE we hold today

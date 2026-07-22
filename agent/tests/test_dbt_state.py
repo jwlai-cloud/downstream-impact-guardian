@@ -161,3 +161,18 @@ def test_resolve_narrative_model():
         assert type(m).__name__ == "LiteLlm"
     except ImportError:
         pass
+
+
+def test_parse_declared_deps_variants():
+    from agent.datahub_client import parse_declared_deps
+    assert parse_declared_deps(
+        {"depends_on_columns": '{"fct_orders": ["order_total"]}'}
+    ) == {"fct_orders": ["order_total"]}
+    assert parse_declared_deps(
+        {"depends_on_columns.fct_orders": "['order_id', 'order_date']"}
+    ) == {"fct_orders": ["order_id", "order_date"]}
+    assert parse_declared_deps(
+        {"depends_on_columns.fct_orders": "order_id, order_date"}
+    ) == {"fct_orders": ["order_id", "order_date"]}
+    assert parse_declared_deps({"unrelated": "x"}) == {}
+    assert parse_declared_deps({"depends_on_columns": "not json ["}) == {}

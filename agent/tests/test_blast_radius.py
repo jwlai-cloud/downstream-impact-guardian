@@ -1,5 +1,6 @@
 from agent import blast_radius
-from agent.models import (Consumer, GlossaryChange, ModelChange, QueryUsage)
+from agent.models import (ColumnChange, Consumer, GlossaryChange, ModelChange,
+                          QueryUsage)
 
 
 def _breaking_change():
@@ -80,3 +81,32 @@ def test_impact_classification_worst_wins():
     blast_radius.assess([drift, broken], [], consumers, {})
     assert inst_a.impact == "BROKEN" and inst_b.impact == "BROKEN"
     assert inst_a.owners == inst_b.owners == ["bi@x"]  # owners unioned too
+
+
+def test_declared_deps_fact_verdicts():
+    from agent.blast_radius import classify_declared_impact
+    ch = ModelChange(model_name="fct_orders", unique_id="m.f", kinds={"schema"})
+    ch.renames = [("order_total", "order_amount_usd")]
+    ch.columns = [ColumnChange("order_total", "removed"),
+                  ColumnChange("order_amount_usd", "added")]
+    assert classify_declared_impact(ch, ["order_total"]) == "BROKEN"
+    assert classify_declared_impact(ch, ["order_id", "order_status"]) == "SAFE"
+    deleted = ModelChange(model_name="m", unique_id="m.m", kinds={"removed"})
+    assert classify_declared_impact(deleted, ["anything"]) == "BROKEN"
+    drift = ModelChange(model_name="r", unique_id="m.r", kinds={"logic"})
+    assert classify_declared_impact(drift, ["order_id"]) == "DISTORTED"  # filter change hits all
+    drift.changed_expressions = ["gross_revenue"]
+    assert classify_declared_impact(drift, ["order_id"]) == "SAFE"
+    assert classify_declared_impact(drift, ["gross_revenue"]) == "DISTORTED"
+
+
+def test_declared_consumer_gets_safe_in_assess():
+    ch = _breaking_change()
+    safe_c = Consumer(name="ops_snapshot", platform="bigquery",
+                      entity_type="dataset",
+                      declared_deps={"fct_orders": ["order_id"]})
+    hit_c = Consumer(name="ltv", platform="bigquery", entity_type="dataset",
+                     declared_deps={"fct_orders": ["order_total"]})
+    report = blast_radius.assess([ch], [], {"fct_orders": [safe_c, hit_c]}, {})
+    assert safe_c.impact == "SAFE"
+    assert hit_c.impact == "BROKEN"
