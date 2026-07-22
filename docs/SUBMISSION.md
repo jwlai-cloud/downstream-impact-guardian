@@ -214,6 +214,15 @@ Two invariants make it trustworthy rather than magical:
 - **Richer rename detection** — today's heuristic handles the
   1-removed/1-added case and honestly flags the rest for a human;
   column-level lineage could close the gap.
+- **Column-expression diffing (removing the due-diligence dependency).**
+  Semantic drift detection currently leans on glossary terms being
+  attached — one act of human diligence per column. Parsing model SQL
+  (sqlglot) to map each column to its expression would make "which
+  field's logic changed" metadata-free, with the LLM classifying
+  meaning-altering vs mechanical changes — and would let the guardian
+  *invert* the diligence problem: spot metric-shaped columns with no
+  glossary term and propose one, manufacturing the governance it relies
+  on.
 - **The one-click demo UI** (a button that opens a real breaking PR and
   narrates the run live) — the GitHub-API client and mock server are
   already built and tested in `tools/demo_ui/`.
