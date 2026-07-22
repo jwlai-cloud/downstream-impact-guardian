@@ -114,3 +114,23 @@ def test_slack_payload_and_gating(monkeypatch):
     # gating: LOW severity + no webhook -> no crash, no send
     monkeypatch.delenv("SLACK_WEBHOOK_URL", raising=False)
     pr_comment.notify_slack(report, "https://pr/1")
+
+
+def test_column_level_effects_section():
+    ch = ModelChange(model_name="fct_orders",
+                     unique_id="model.f.fct_orders",
+                     kinds={"schema", "logic"})
+    # field ships in PR #10; render() getattr-guards, so simulate here
+    ch.changed_expressions = ["gross_revenue"]
+    ch.renames = [("order_total", "order_amount_usd")]
+    ch.columns = [ColumnChange("order_total", "removed"),
+                  ColumnChange("order_amount_usd", "added")]
+    queries = {"fct_orders": [QueryUsage(
+        sql="SELECT SUM(order_total) FROM fct_orders")]}
+    report = blast_radius.assess([ch], [], {}, queries)
+    body = pr_comment.render(report, [], [], mode="offline")
+    assert "Column-level effects" in body
+    assert "`fct_orders.order_total` | renamed → `order_amount_usd` | "
+    assert "1 observed query reference it" in body
+    assert "expression changed" in body
+    assert "direct evidence, not inference" in body

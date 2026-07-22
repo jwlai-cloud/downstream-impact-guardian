@@ -83,6 +83,50 @@ def render(report: ImpactReport, contracts: list[ContractResult],
                      "consumer.")
         lines.append("")
 
+    # Column-level effects: per changed column, the EVIDENCE we hold today
+    # (what happened to it, which observed queries name it, which glossary
+    # term binds it). The column->consumer join needs column-level lineage
+    # and stays roadmap; this section is facts, not worst-case.
+    col_rows = []
+    for ch in report.model_changes:
+        col_events: dict[str, list[str]] = {}
+        for old, new in ch.renames:
+            col_events.setdefault(old, []).append(f"renamed → `{new}`")
+        for c in ch.columns:
+            if c.change == "removed" and c.name not in {o for o, _ in ch.renames}:
+                col_events.setdefault(c.name, []).append("removed")
+        for c in getattr(ch, "changed_expressions", []) or []:
+            col_events.setdefault(c, []).append("expression changed")
+        if "removed" in ch.kinds:
+            for c in ch.old_columns:
+                col_events.setdefault(c, []).append("model deleted")
+        for col, events in col_events.items():
+            import re as _re
+            q_hits = [q for q in report.queries.get(ch.model_name, [])
+                      if _re.search(rf"\b{_re.escape(col)}\b", q.sql,
+                                    _re.IGNORECASE)]
+            evidence = []
+            if q_hits:
+                evidence.append(f"{len(q_hits)} observed quer"
+                                f"{'y' if len(q_hits) == 1 else 'ies'} "
+                                "reference it")
+            for s in (report.suspected_drifts or []):
+                if s.model_name == ch.model_name and s.column == col:
+                    evidence.append(f"bound to glossary term "
+                                    f"**{s.term_name}**")
+            col_rows.append(f"| `{ch.model_name}.{col}` | "
+                            f"{'; '.join(events)} | "
+                            f"{'; '.join(evidence) or '—'} |")
+    if col_rows:
+        lines += ["### Column-level effects (evidence held today)", "",
+                  "| Column | What happened | Observed evidence |",
+                  "|---|---|---|"]
+        lines += col_rows
+        lines += ["",
+                  "> Which downstream consumers read each column needs "
+                  "column-level lineage — roadmap. Everything above is "
+                  "direct evidence, not inference.", ""]
+
     broken_queries = [(m, q) for m, qs in report.queries.items()
                       for q in qs if q.references_changed_column]
     if broken_queries:
