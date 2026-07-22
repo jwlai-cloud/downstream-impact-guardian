@@ -68,6 +68,16 @@ def test_render_suspected_drift_and_multiple_contracts():
     assert "urn:li:dataContract:b" in body
 
 
+def test_render_deleted_model_marker():
+    ch = ModelChange(model_name="revenue_daily",
+                     unique_id="model.f.revenue_daily", kinds={"removed"},
+                     old_columns=["order_date"])
+    report = blast_radius.assess([ch], [], {}, {})
+    body = pr_comment.render(report, [], [], mode="offline")
+    assert "removed" in body
+    assert "model deleted in this PR" in body
+
+
 def test_render_no_contracts_says_so():
     report, ch = _report()
     body = pr_comment.render(report, [], [], mode="live")

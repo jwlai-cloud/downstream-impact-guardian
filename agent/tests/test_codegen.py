@@ -68,6 +68,29 @@ def test_deleted_model_gets_legacy_view():
     assert "DELETES the model" in arts[0].schema_yml
 
 
+def test_cascading_deletion_retargets_legacy_refs():
+    """Upstream AND downstream deleted in one PR: downstream's legacy view
+    must ref the upstream's legacy view, not the deleted model."""
+    up = ModelChange(model_name="fct_orders", unique_id="model.f.fct_orders",
+                     kinds={"removed"},
+                     old_sql="select * from {{ ref('stg_orders') }}",
+                     old_columns=["order_id"])
+    down = ModelChange(
+        model_name="revenue_daily", unique_id="model.f.revenue_daily",
+        kinds={"removed"},
+        old_sql="select order_date, sum(order_total) as gross_revenue\n"
+                "from {{ ref('fct_orders') }}\ngroup by order_date",
+        old_columns=["order_date"])
+    arts = codegen.generate_all([up, down])
+    names = {a.view_name for a in arts}
+    assert names == {"fct_orders_legacy", "revenue_daily_legacy"}
+    down_art = next(a for a in arts if a.view_name == "revenue_daily_legacy")
+    assert "ref('fct_orders_legacy')" in down_art.sql
+    up_art = next(a for a in arts if a.view_name == "fct_orders_legacy")
+    # a model's own legacy view must not rewrite its own name
+    assert "ref('stg_orders')" in up_art.sql
+
+
 def test_deleted_model_without_sql_gets_nothing():
     ch = ModelChange(model_name="m", unique_id="model.f.m",
                      kinds={"removed"}, old_sql="")

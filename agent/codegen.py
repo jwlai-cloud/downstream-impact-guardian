@@ -107,14 +107,21 @@ def generate_legacy_view(change: ModelChange,
 
 def generate_all(changes: list[ModelChange]) -> list[CompatArtifact]:
     artifacts: list[CompatArtifact] = []
-    compat_views: dict[str, str] = {}
+    retarget: dict[str, str] = {}
     for ch in changes:
         art = generate_compat_view(ch)
         if art:
             artifacts.append(art)
-            compat_views[ch.model_name] = art.view_name
+            retarget[ch.model_name] = art.view_name
+    # Deleted upstreams must be retargeted too: a legacy view whose SQL
+    # refs a model this same PR deletes would fail dbt build. Register all
+    # legacy names BEFORE rendering (cascading deletions).
     for ch in changes:
-        art = generate_legacy_view(ch, compat_views)
+        if "removed" in ch.kinds and ch.old_sql.strip():
+            retarget[ch.model_name] = f"{ch.model_name}_legacy"
+    for ch in changes:
+        art = generate_legacy_view(ch, {m: v for m, v in retarget.items()
+                                        if m != ch.model_name})
         if art:
             artifacts.append(art)
     return artifacts

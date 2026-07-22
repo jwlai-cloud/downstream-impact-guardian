@@ -24,9 +24,6 @@ THRESHOLDS = [(9, "CRITICAL"), (6, "HIGH"), (3, "MEDIUM"), (0, "LOW")]
 
 
 def _changed_column_names(change: ModelChange) -> set[str]:
-    if "removed" in change.kinds:
-        # whole model gone: every observed query against it breaks
-        return set(change.old_columns) or {change.model_name}
     names = {c.name for c in change.columns if c.change in ("removed", "type_changed")}
     names |= {old for old, _ in change.renames}
     return names
@@ -53,10 +50,13 @@ def assess(model_changes: list[ModelChange],
 
         # Does any observed query in the wild reference a column this PR
         # removes or renames? That is a guaranteed break, not a maybe.
+        # A DELETED model breaks every query against it unconditionally —
+        # column-token matching would miss `SELECT *` / `COUNT(*)`.
         changed_cols = _changed_column_names(change)
         for q in queries.get(change.model_name, []):
-            hit = any(re.search(rf"\b{re.escape(col)}\b", q.sql, re.IGNORECASE)
-                      for col in changed_cols)
+            hit = ("removed" in change.kinds or
+                   any(re.search(rf"\b{re.escape(col)}\b", q.sql, re.IGNORECASE)
+                       for col in changed_cols))
             q.references_changed_column = hit
             if hit:
                 score += W_QUERY_HITS_CHANGED_COLUMN

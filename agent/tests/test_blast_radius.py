@@ -38,8 +38,8 @@ def test_deleted_model_breaks_every_observed_query():
                      unique_id="model.f.fct_orders", kinds={"removed"},
                      old_columns=["order_id", "order_total"])
     queries = {"fct_orders": [
-        QueryUsage(sql="SELECT order_id FROM fct_orders"),
-        QueryUsage(sql="SELECT SUM(order_total) FROM fct_orders"),
+        QueryUsage(sql="SELECT * FROM some_alias LIMIT 5"),  # no column token
+        QueryUsage(sql="SELECT COUNT(*) FROM t"),            # no column token
     ]}
     report = blast_radius.assess([ch], [], {}, queries)
     assert all(q.references_changed_column for q in queries["fct_orders"])
