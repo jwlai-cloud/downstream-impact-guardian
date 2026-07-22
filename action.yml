@@ -77,14 +77,25 @@ runs:
 
     # `dbt parse` opens no warehouse connection; the consuming repo needs a
     # parse-able profiles.yml in the dbt project dir (env-driven is fine).
+    # Inputs reach the shell ONLY via env indirection (never interpolated
+    # into run: — injection surface), and empty inputs must NOT be
+    # exported: an empty env var defeats env_var() defaults in profiles.yml
+    # ("Must specify schema").
     - name: Parse PR dbt state
       shell: bash
       working-directory: ${{ inputs.dbt-project-dir }}
       env:
         DBT_PROFILES_DIR: "."
-        GCP_PROJECT: ${{ inputs.warehouse-project }}
-        BQ_DATASET: ${{ inputs.warehouse-dataset }}
-      run: dbt parse --no-partial-parse
+        INPUT_WAREHOUSE_PROJECT: ${{ inputs.warehouse-project }}
+        INPUT_WAREHOUSE_DATASET: ${{ inputs.warehouse-dataset }}
+      run: |
+        if [ -n "$INPUT_WAREHOUSE_PROJECT" ]; then
+          export GCP_PROJECT="$INPUT_WAREHOUSE_PROJECT"
+        fi
+        if [ -n "$INPUT_WAREHOUSE_DATASET" ]; then
+          export BQ_DATASET="$INPUT_WAREHOUSE_DATASET"
+        fi
+        dbt parse --no-partial-parse
 
     - name: Run Downstream Impact Guardian
       shell: bash
@@ -93,21 +104,33 @@ runs:
         DATAHUB_GMS_TOKEN: ${{ inputs.datahub-token }}
         GOOGLE_API_KEY: ${{ inputs.google-api-key }}
         GITHUB_TOKEN: ${{ inputs.github-token }}
-        GCP_PROJECT: ${{ inputs.warehouse-project }}
-        BQ_DATASET: ${{ inputs.warehouse-dataset }}
         DATAHUB_PLATFORM: ${{ inputs.datahub-platform }}
+        INPUT_WAREHOUSE_PROJECT: ${{ inputs.warehouse-project }}
+        INPUT_WAREHOUSE_DATASET: ${{ inputs.warehouse-dataset }}
+        INPUT_DBT_PROJECT_DIR: ${{ inputs.dbt-project-dir }}
+        INPUT_PROD_MANIFEST: ${{ inputs.prod-manifest }}
+        INPUT_GLOSSARY_FILE: ${{ inputs.glossary-file }}
+        INPUT_PR_NUMBER: ${{ inputs.pr-number }}
+        INPUT_OUTPUT_DIR: ${{ inputs.output-dir }}
+        INPUT_STRICT: ${{ inputs.strict }}
+        ACTION_PATH: ${{ github.action_path }}
       run: |
-        DIR="${{ inputs.dbt-project-dir }}"
-        PROD="${{ inputs.prod-manifest }}"
-        [ -z "$PROD" ] && PROD="$DIR/prod_state/manifest.json"
-        GLOSS="${{ inputs.glossary-file }}"
-        [ -z "$GLOSS" ] && GLOSS="$DIR/datahub/business_glossary.yml"
-        STRICT=""
-        [ "${{ inputs.strict }}" = "true" ] && STRICT="--strict"
-        python "${{ github.action_path }}/agent/main.py" \
-          --pr-number "${{ inputs.pr-number }}" \
+        if [ -n "$INPUT_WAREHOUSE_PROJECT" ]; then
+          export GCP_PROJECT="$INPUT_WAREHOUSE_PROJECT"
+        fi
+        if [ -n "$INPUT_WAREHOUSE_DATASET" ]; then
+          export BQ_DATASET="$INPUT_WAREHOUSE_DATASET"
+        fi
+        PROD="${INPUT_PROD_MANIFEST:-$INPUT_DBT_PROJECT_DIR/prod_state/manifest.json}"
+        GLOSS="${INPUT_GLOSSARY_FILE:-$INPUT_DBT_PROJECT_DIR/datahub/business_glossary.yml}"
+        STRICT_ARGS=()
+        if [ "$INPUT_STRICT" = "true" ]; then
+          STRICT_ARGS=("--strict")
+        fi
+        python "$ACTION_PATH/agent/main.py" \
+          --pr-number "$INPUT_PR_NUMBER" \
           --prod-manifest "$PROD" \
-          --pr-manifest "$DIR/target/manifest.json" \
+          --pr-manifest "$INPUT_DBT_PROJECT_DIR/target/manifest.json" \
           --glossary "$GLOSS" \
-          --output-dir "${{ inputs.output-dir }}" \
-          $STRICT
+          --output-dir "$INPUT_OUTPUT_DIR" \
+          "${STRICT_ARGS[@]}"
