@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Downstream Impact Guardian — live demo</title>
+<style>
+  :root {
+    --paper:#F7FAF7; --ink:#182420; --muted:#5A6B64; --line:#D8E2DC;
+    --card:#FFFFFF; --accent:#0E7C6B; --accent-soft:#E3F0EC;
+    --crit:#B3261E; --ok:#2E6B34; --code:#EEF4F0;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --paper:#111917; --ink:#E5EEE9; --muted:#93A69D; --line:#293933;
+      --card:#17221E; --accent:#4FB8A2; --accent-soft:#1B2E29;
+      --crit:#E5766C; --ok:#7CBF84; --code:#1C2A25; }
+  }
+  body { background:var(--paper); color:var(--ink); margin:0;
+    font-family:Seravek,"Avenir Next","Segoe UI",system-ui,sans-serif;
+    line-height:1.55; padding:2.5rem 1.25rem 5rem; }
+  main { max-width:72ch; margin:0 auto; }
+  .eyebrow { font-family:ui-monospace,Menlo,monospace; font-size:.72rem;
+    letter-spacing:.14em; text-transform:uppercase; color:var(--accent); }
+  h1 { font-size:1.9rem; line-height:1.15; margin:.4rem 0 .6rem; font-weight:650; }
+  .sub { color:var(--muted); margin:0 0 1.8rem; }
+  .cards { display:grid; grid-template-columns:1fr 1fr; gap:.8rem; margin-bottom:1rem; }
+  @media (max-width:640px){ .cards{grid-template-columns:1fr} }
+  .card { background:var(--card); border:1.5px solid var(--line); border-radius:10px;
+    padding:1rem 1.1rem; cursor:pointer; text-align:left; font:inherit; color:inherit; }
+  .card.sel { border-color:var(--accent); background:var(--accent-soft); }
+  .card b { display:block; margin-bottom:.25rem; }
+  .card small { color:var(--muted); }
+  #go { background:var(--accent); color:#fff; border:none; border-radius:10px;
+    font:inherit; font-weight:650; font-size:1.05rem; padding:.85rem 1.6rem;
+    cursor:pointer; width:100%; }
+  #go:disabled { opacity:.5; cursor:default; }
+  .timeline { margin:1.6rem 0 0; padding:0; list-style:none; display:grid; gap:.5rem; }
+  .timeline li { background:var(--card); border:1px solid var(--line);
+    border-left:3px solid var(--muted); border-radius:0 8px 8px 0;
+    padding:.55rem .9rem; color:var(--muted); }
+  .timeline li.active { border-left-color:var(--accent); color:var(--ink); }
+  .timeline li.done { border-left-color:var(--ok); color:var(--ink); }
+  .timeline li a { color:var(--accent); }
+  #report { margin-top:1.6rem; display:none; background:var(--card);
+    border:1px solid var(--line); border-radius:10px; padding:1.2rem 1.4rem;
+    overflow-x:auto; }
+  #report table { border-collapse:collapse; }
+  #report th, #report td { border:1px solid var(--line); padding:.35rem .6rem;
+    font-size:.9rem; text-align:left; }
+  #report pre { background:var(--code); padding:.8rem; border-radius:8px;
+    overflow-x:auto; font-size:.82rem; }
+  #report code { background:var(--code); padding:.05em .3em; border-radius:4px; }
+  .err { color:var(--crit); margin-top:1rem; }
+  .foot { margin-top:3rem; font-family:ui-monospace,Menlo,monospace;
+    font-size:.72rem; color:var(--muted); }
+  .foot a { color:var(--accent); }
+</style>
+</head>
+<body>
+<main>
+  <p class="eyebrow">Downstream Impact Guardian · live demo</p>
+  <h1>Break a data pipeline. Watch the agent catch it.</h1>
+  <p class="sub">One click opens a real pull request with a staged breaking
+  change against <a href="https://github.com/jwlai-cloud/fiction-retail-dbt">an
+  independent dbt repo</a> that integrates the guardian with a single
+  <code>uses:</code> block. The real GitHub Action runs; the agent's report
+  lands below in about a minute.</p>
+
+  <div class="cards">
+    <button class="card sel" data-s="rename">
+      <b>Rename a column 🏷️</b>
+      <small>order_total → order_amount_usd, plus a silent revenue
+      redefinition and a glossary rewrite</small>
+    </button>
+    <button class="card" data-s="delete">
+      <b>Delete a whole model 🗑️</b>
+      <small>revenue_daily removed — "finance says they don't use it
+      anymore" (they do)</small>
+    </button>
+  </div>
+  <button id="go">Open the breaking PR →</button>
+  <p class="err" id="err" hidden></p>
+
+  <ol class="timeline" id="tl" hidden>
+    <li id="t1">Opening pull request…</li>
+    <li id="t2">Guardian Action running…</li>
+    <li id="t3">Report posted</li>
+  </ol>
+
+  <article id="report"></article>
+
+  <p class="foot">Demo PRs auto-close after 45 min ·
+    <a href="https://github.com/jwlai-cloud/downstream-impact-guardian">how it works</a> ·
+    never ingests hypothetical state</p>
+</main>
+<script type="module">
+import { marked } from "https://cdn.jsdelivr.net/npm/marked@12/lib/marked.esm.js";
+
+let scenario = "rename";
+document.querySelectorAll(".card").forEach(c => c.onclick = () => {
+  document.querySelectorAll(".card").forEach(x => x.classList.remove("sel"));
+  c.classList.add("sel"); scenario = c.dataset.s;
+});
+
+const $ = id => document.getElementById(id);
+const set = (id, cls, html) => { const e=$(id); e.className=cls; if(html) e.innerHTML=html; };
+
+$("go").onclick = async () => {
+  $("go").disabled = true; $("err").hidden = true; $("tl").hidden = false;
+  set("t1","active","Opening pull request…");
+  try {
+    const r = await fetch("/api/create-demo", { method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({ scenario }) });
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.error || r.status);
+    set("t1","done",`PR opened: <a href="${j.url}" target="_blank">#${j.number}</a>`);
+    set("t2","active","Guardian Action running…");
+    poll(j.number, j.branch, Date.now());
+  } catch(e) {
+    $("err").textContent = "Could not open the demo PR: " + e.message;
+    $("err").hidden = false; $("go").disabled = false;
+  }
+};
+
+async function poll(pr, branch, t0) {
+  if (Date.now() - t0 > 5*60*1000) {
+    set("t2","","Timed out — open the PR link above to check directly.");
+    $("go").disabled = false; return;
+  }
+  try {
+    const r = await fetch(`/api/status?pr=${pr}&branch=${encodeURIComponent(branch)}`);
+    const j = await r.json();
+    const run = (j.checks || []).find(c => c.name === "guardian") || (j.checks || [])[0];
+    if (run) set("t2", run.status === "completed" ? "done" : "active",
+      `Guardian Action: ${run.status}${run.conclusion ? " ("+run.conclusion+")" : ""}` +
+      (run.url ? ` — <a href="${run.url}" target="_blank">logs</a>` : ""));
+    if (j.comment) {
+      set("t3","done",`Report posted — <a href="${j.commentUrl}" target="_blank">view on GitHub</a>`);
+      const rep = $("report");
+      rep.style.display = "block";
+      rep.innerHTML = marked.parse(j.comment);
+      $("go").disabled = false;
+      return;
+    }
+  } catch(_) { /* transient; keep polling */ }
+  setTimeout(() => poll(pr, branch, t0), 4000);
+}
+</script>
+</body>
+</html>
