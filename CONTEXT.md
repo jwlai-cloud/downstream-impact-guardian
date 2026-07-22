@@ -82,3 +82,10 @@ HIGH/CRITICAL severity a Slack notification fires when a webhook is
 configured; on CRITICAL under strict mode the check blocks until the
 compatibility code path is adopted. The Data Contract remains the durable
 record for stakeholders who arrive later.
+
+**Declared column dependency** — a consumer's own statement of which
+upstream columns it reads, declared in the consumer's dbt yml meta and
+ingested onto its DataHub entity. When present, impact level for that
+consumer becomes fact (BROKEN on match, SAFE on no-match) instead of the
+worst-case upper bound. The precision ladder: declared > derived
+(column-level lineage, roadmap) > worst-case (always available).

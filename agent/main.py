@@ -69,7 +69,9 @@ def run(args) -> int:
     print(f"[guardian] severity={report.severity} score={report.score}")
 
     # Optional: ADK/Gemini narrative on top of the deterministic one.
-    if config.mode == "live" and config.google_api_key:
+    import os as _os
+    if config.mode == "live" and (config.google_api_key
+                                  or _os.environ.get("OPENAI_API_KEY")):
         from agent.adk_agent import enrich_narrative
         enrich_narrative(report, reader, config.google_api_key)
         print(f"[guardian] narrative source: {report.narrative_source}")

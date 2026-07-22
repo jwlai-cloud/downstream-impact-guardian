@@ -39,3 +39,19 @@ Data Contract remains the durable, catalog-level record.
 - Ownership becomes the fifth DataHub surface the guardian reads.
 - Slack is fire-and-forget best-effort: a webhook failure never fails
   the check.
+
+## Addendum (same day): declared column dependencies — the middle rung
+
+Between worst-case impact (shipped) and derived column-level lineage
+(roadmap) sits a consumer-declared protocol: each consumer declares the
+upstream columns it depends on in ITS OWN dbt yml meta
+(`depends_on_columns: {fct_orders: [order_total, ...]}`), its ingestion
+lands that on its DataHub entity, and the guardian matches declarations
+against the changed-column list. Declared match → BROKEN as fact;
+declared no-match → SAFE (a verdict worst-case can never give); no
+declaration → worst-case as today. The declaration's home is DataHub —
+not the producer's repo — because the consumers that matter live in
+other repos and other tools. Declaration rot is mitigated the same way
+as glossary diligence: the guardian sees observed queries per column and
+can suggest the declaration. Read-side implementation is deliberately
+deferred until after this PR merges.

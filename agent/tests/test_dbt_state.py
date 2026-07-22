@@ -96,6 +96,40 @@ def test_suspected_drift_suppressed_when_glossary_updated():
         pr, [ch], updated, FixtureDataHubClient()) == []
 
 
+def test_expression_diff_attributes_changed_columns():
+    """Only avg_order_value's formula changes -> attributed per column."""
+    old = mk_manifest([("revenue_daily", ["order_date", "gross_revenue", "avg_order_value"],
+        "select order_date, sum(order_total) as gross_revenue, "
+        "avg(order_total) as avg_order_value "
+        "from {{ ref('fct_orders') }} group by order_date")])
+    new = mk_manifest([("revenue_daily", ["order_date", "gross_revenue", "avg_order_value"],
+        "select order_date, sum(order_total) as gross_revenue, "
+        "sum(order_total) / nullif(count(distinct customer_id), 0) as avg_order_value "
+        "from {{ ref('fct_orders') }} group by order_date")])
+    changes = dbt_state.diff_manifests(old, new)
+    assert changes[0].kinds == {"logic"}
+    assert changes[0].changed_expressions == ["avg_order_value"]
+
+
+def test_where_only_change_has_no_expression_attribution():
+    """Filter change alters every column's VALUES but no expression —
+    changed_expressions stays empty, logic change still detected."""
+    old = mk_manifest([("revenue_daily", ["d", "rev"],
+        "select d, sum(x) as rev from {{ ref('t') }} "
+        "where s != 'cancelled' group by d")])
+    new = mk_manifest([("revenue_daily", ["d", "rev"],
+        "select d, sum(x) as rev from {{ ref('t') }} "
+        "where s in ('completed', 'shipped') group by d")])
+    changes = dbt_state.diff_manifests(old, new)
+    assert changes[0].kinds == {"logic"}
+    assert changes[0].changed_expressions == []
+
+
+def test_unparseable_sql_degrades_gracefully():
+    assert dbt_state._column_expressions("{% macro weird %} not sql at all (((") is None
+    assert dbt_state._diff_expressions("((broken", "select 1 as a from t") == []
+
+
 def test_glossary_drift_against_live_datahub(tmp_path):
     g = tmp_path / "glossary.yml"
     g.write_text("""
@@ -114,3 +148,16 @@ nodes:
     assert [c.term_name for c in changes] == ["Gross Revenue"]
     assert "refunds included" in changes[0].live_definition
     assert "refunds excluded" in changes[0].proposed_definition
+
+
+def test_resolve_narrative_model():
+    from agent.adk_agent import resolve_model
+    assert resolve_model(None) == "gemini-flash-latest"
+    assert resolve_model("gemini-2.5-pro") == "gemini-2.5-pro"
+    # non-gemini ids require the LiteLLM adapter (import may be absent in
+    # the offline test env — either outcome proves the routing)
+    try:
+        m = resolve_model("openai/gpt-4o-mini")
+        assert type(m).__name__ == "LiteLlm"
+    except ImportError:
+        pass

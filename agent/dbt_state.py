@@ -37,6 +37,38 @@ def _norm_sql(sql: str) -> str:
     return re.sub(r"\s+", " ", sql).strip().lower()
 
 
+def _column_expressions(sql: str) -> dict[str, str] | None:
+    """Map output column -> normalized SELECT expression, via sqlglot.
+    Jinja is neutralized first ({{ ref(...) }} -> placeholder table).
+    Returns None when the SQL can't be parsed — callers must treat that as
+    'unknown', never 'unchanged'."""
+    try:
+        import sqlglot
+
+        stripped = re.sub(r"\{\{[^}]*\}\}", "__dbt_relation__", sql)
+        stripped = re.sub(r"\{%[^%]*%\}", " ", stripped)
+        parsed = sqlglot.parse_one(stripped, read="bigquery")
+        select = parsed if isinstance(parsed, sqlglot.exp.Select) \
+            else parsed.find(sqlglot.exp.Select)
+        if select is None:
+            return None
+        return {proj.alias_or_name: proj.unalias().sql(dialect="bigquery").lower()
+                for proj in select.expressions
+                if proj.alias_or_name and proj.alias_or_name != "*"}
+    except Exception:
+        return None
+
+
+def _diff_expressions(old_sql: str, new_sql: str) -> list[str]:
+    """Columns present in BOTH versions whose expression changed.
+    Empty when nothing attributable changed OR when parsing failed."""
+    old_map, new_map = _column_expressions(old_sql), _column_expressions(new_sql)
+    if old_map is None or new_map is None:
+        return []
+    return sorted(c for c in old_map.keys() & new_map.keys()
+                  if old_map[c] != new_map[c])
+
+
 def diff_manifests(prod: dict, pr: dict) -> list[ModelChange]:
     prod_models, pr_models = _models(prod), _models(pr)
     changes: list[ModelChange] = []
@@ -73,6 +105,8 @@ def diff_manifests(prod: dict, pr: dict) -> list[ModelChange]:
 
         if _norm_sql(change.old_sql) != _norm_sql(change.new_sql):
             change.kinds.add("logic")
+            change.changed_expressions = _diff_expressions(
+                change.old_sql, change.new_sql)
 
         if change.kinds:
             changes.append(change)

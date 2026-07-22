@@ -10,6 +10,21 @@ import json
 
 from agent.models import ImpactReport
 
+DEFAULT_MODEL = "gemini-flash-latest"
+
+
+def resolve_model(name: str | None):
+    """ADK model argument for the narrative agent. Gemini names pass
+    through as strings (ADK-native). Anything else — 'openai/gpt-4o-mini',
+    'openai/qwen-max' with OPENAI_API_BASE pointing at an
+    OpenAI-compatible endpoint — is wrapped in ADK's LiteLLM adapter."""
+    name = (name or DEFAULT_MODEL).strip()
+    if name.startswith("gemini"):
+        return name
+    from google.adk.models.lite_llm import LiteLlm
+    return LiteLlm(model=name)
+
+
 INSTRUCTION = """\
 You are the Downstream Impact Guardian reviewing a dbt pull request.
 You receive detected facts as JSON: model changes (schema/logic), glossary
@@ -66,9 +81,10 @@ async def _run(report: ImpactReport, reader) -> str:
     from google.adk.sessions import InMemorySessionService
     from google.genai import types
 
+    import os
     agent = Agent(
         name="downstream_impact_guardian",
-        model="gemini-flash-latest",
+        model=resolve_model(os.environ.get("GUARDIAN_NARRATIVE_MODEL")),
         instruction=INSTRUCTION,
         tools=build_tools(reader),
     )
@@ -103,13 +119,16 @@ async def _run(report: ImpactReport, reader) -> str:
 
 
 def enrich_narrative(report: ImpactReport, reader, api_key: str) -> None:
-    """Best-effort: replace the deterministic narrative with an ADK/Gemini
-    one. Any failure leaves the report untouched."""
-    if not api_key:
+    """Best-effort: replace the deterministic narrative with an LLM one
+    (Gemini by default; any LiteLLM-supported provider via
+    GUARDIAN_NARRATIVE_MODEL + that provider's env vars). Any failure
+    leaves the deterministic report untouched."""
+    import os
+    if not api_key and not os.environ.get("OPENAI_API_KEY"):
         return
     try:
-        import os
-        os.environ.setdefault("GOOGLE_API_KEY", api_key)
+        if api_key:
+            os.environ.setdefault("GOOGLE_API_KEY", api_key)
         # Bounded: a hung model call must not stall the Action job
         text = asyncio.run(asyncio.wait_for(_run(report, reader), timeout=120))
         if text:

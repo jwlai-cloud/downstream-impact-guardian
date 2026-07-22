@@ -35,6 +35,18 @@ inputs:
   google-api-key:
     description: Gemini API key for the ADK narrative agent (optional)
     default: ""
+  narrative-model:
+    description: >
+      Narrative LLM. Default gemini-flash-latest; any LiteLLM id works
+      (e.g. openai/gpt-4o-mini, or openai/<model> against an
+      OpenAI-compatible endpoint via openai-base-url).
+    default: ""
+  openai-api-key:
+    description: OpenAI-compatible API key (alternative to google-api-key)
+    default: ""
+  openai-base-url:
+    description: OpenAI-compatible base URL (e.g. Qwen/DashScope compat mode)
+    default: ""
   slack-webhook-url:
     description: Slack incoming webhook — one summary message on HIGH/CRITICAL
     default: ""
@@ -109,6 +121,9 @@ runs:
         DATAHUB_GMS_URL: ${{ inputs.datahub-url }}
         DATAHUB_GMS_TOKEN: ${{ inputs.datahub-token }}
         GOOGLE_API_KEY: ${{ inputs.google-api-key }}
+        GUARDIAN_NARRATIVE_MODEL: ${{ inputs.narrative-model }}
+        OPENAI_API_KEY: ${{ inputs.openai-api-key }}
+        OPENAI_API_BASE: ${{ inputs.openai-base-url }}
         GITHUB_TOKEN: ${{ inputs.github-token }}
         SLACK_WEBHOOK_URL: ${{ inputs.slack-webhook-url }}
         DATAHUB_PLATFORM: ${{ inputs.datahub-platform }}
