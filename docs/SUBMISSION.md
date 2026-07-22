@@ -277,6 +277,10 @@ form-fill time)*
 - **Bring your own agent:** point Claude/Cursor at the demo catalog via
   the preconfigured `.mcp.json` (DataHub MCP Server) and interrogate
   the same lineage, glossary, and PROPOSED contract.
+- **Read the design story:** the full write-up — inspiration, design
+  decisions, architecture, code walkthrough, and what each demo scenario
+  actually outputs — lives at
+  [`docs/blog/2026-07-23-designing-honest-blast-radius.md`](blog/2026-07-23-designing-honest-blast-radius.md).
 
 ---
 
