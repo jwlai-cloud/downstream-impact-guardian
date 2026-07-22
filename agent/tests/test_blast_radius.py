@@ -63,3 +63,20 @@ def test_semantic_drift_adds_weight_and_narrative():
     assert report.score == 3  # 1 logic + 2 drift
     assert report.severity == "MEDIUM"
     assert "Gross Revenue" in report.narrative
+
+
+def test_impact_classification_worst_wins():
+    from agent.blast_radius import classify_impact
+    broken = ModelChange(model_name="a", unique_id="m.a", kinds={"removed"})
+    drift = ModelChange(model_name="b", unique_id="m.b", kinds={"logic"})
+    assert classify_impact(broken) == "BROKEN"
+    assert classify_impact(drift) == "DISTORTED"
+    # production shape: SEPARATE instances of the same entity per model
+    inst_a = Consumer(name="Dash", platform="looker", entity_type="dashboard",
+                      urn="urn:li:dashboard:(looker,dash)", owners=["bi@x"])
+    inst_b = Consumer(name="Dash", platform="looker", entity_type="dashboard",
+                      urn="urn:li:dashboard:(looker,dash)")
+    consumers = {"a": [inst_a], "b": [inst_b]}
+    blast_radius.assess([drift, broken], [], consumers, {})
+    assert inst_a.impact == "BROKEN" and inst_b.impact == "BROKEN"
+    assert inst_a.owners == inst_b.owners == ["bi@x"]  # owners unioned too

@@ -61,6 +61,8 @@ class Consumer:
     urn: str = ""
     hops: int = 1
     detail: str = ""
+    owners: list[str] = field(default_factory=list)  # DataHub ownership
+    impact: str = ""           # BROKEN | DISTORTED | ADVISORY (ADR-0010)
 
 
 @dataclass

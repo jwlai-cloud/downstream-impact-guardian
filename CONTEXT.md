@@ -56,4 +56,37 @@ renders. Not a test double.
 
 **Severity** — the deterministic LOW/MEDIUM/HIGH/CRITICAL rating computed
 from breaking changes, metric drift, semantic drift, consumers, and
-query hits. Scored by code, never by the LLM.
+query hits. Scored by code, never by the LLM. PR-level: one rating per
+check run. ("Impact level" is NOT a synonym — see below.)
+
+**Impact level** — per-consumer classification of what a change does to
+one downstream entity: **BROKEN** (it will error — upstream of it a
+column was removed/renamed or a model deleted), **DISTORTED** (it keeps
+running but its numbers silently change — downstream of metric drift),
+**ADVISORY** (only the business meaning shifted — semantic drift).
+Worst applicable level wins per consumer, and the level is an honest
+**upper bound** derived from the upstream change kind — a consumer that
+doesn't touch the changed columns *may be unaffected, but v1 cannot
+determine that per consumer*; declared column dependencies or
+column-level lineage upgrade the label to fact. *(Decided 2026-07-22 grill: orthogonal
+to Severity — Severity says how bad the PR is, impact level says what
+can happen to each victim.)*
+
+**Stakeholder** — the DataHub owners of an impacted consumer entity,
+resolved from the ownership aspect. An impacted consumer with no owners
+is reported as **unowned** — itself a governance finding, never silently
+skipped.
+
+**Informing protocol** — how stakeholders learn about impact: the PR
+comment always carries the consumer × impact level × owners table; on
+HIGH/CRITICAL severity a Slack notification fires when a webhook is
+configured; on CRITICAL under strict mode the check blocks until the
+compatibility code path is adopted. The Data Contract remains the durable
+record for stakeholders who arrive later.
+
+**Declared column dependency** — a consumer's own statement of which
+upstream columns it reads, declared in the consumer's dbt yml meta and
+ingested onto its DataHub entity. When present, impact level for that
+consumer becomes fact (BROKEN on match, SAFE on no-match) instead of the
+worst-case upper bound. The precision ladder: declared > derived
+(column-level lineage, roadmap) > worst-case (always available).

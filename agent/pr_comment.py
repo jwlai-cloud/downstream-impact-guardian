@@ -57,10 +57,13 @@ def render(report: ImpactReport, contracts: list[ContractResult],
     any_consumers = any(report.consumers.get(ch.model_name)
                         for ch in report.model_changes)
     if any_consumers:
-        lines += ["### Blast radius (from DataHub lineage — live systems, "
-                  "not this repo)", "",
-                  "| Downstream consumer | Platform | Type | Hops |",
-                  "|---|---|---|---|"]
+        lines += ["### Blast radius & who to inform (from DataHub lineage "
+                  "+ ownership — live systems, not this repo)", "",
+                  "| Downstream consumer | Platform | Type | Worst-case impact | "
+                  "Stakeholders to inform |",
+                  "|---|---|---|---|---|"]
+        impact_badge = {"BROKEN": "🔴 BROKEN", "DISTORTED": "🟠 DISTORTED",
+                        "ADVISORY": "🟡 ADVISORY", "": "—"}
         all_consumers = sorted(
             (c for ch in report.model_changes
              for c in report.consumers.get(ch.model_name, [])),
@@ -71,9 +74,62 @@ def render(report: ImpactReport, contracts: list[ContractResult],
             if key in seen:
                 continue  # same entity reachable from several changed models
             seen.add(key)
-            lines.append(f"| {c.name} | {c.platform} | "
-                         f"{c.entity_type} | {c.hops} |")
+            owners = (", ".join(c.owners) if c.owners
+                      else "⚠️ **unowned** — assign an owner in DataHub")
+            lines.append(f"| {c.name} | {c.platform} | {c.entity_type} | "
+                         f"{impact_badge.get(c.impact, c.impact)} | "
+                         f"{owners} |")
         lines.append("")
+        lines.append("> Impact is the honest upper bound from the upstream "
+                     "change kind — a consumer not touching the changed "
+                     "columns is safe (cross-check the changed-column list "
+                     "above). Column-level lineage will refine this per "
+                     "consumer.")
+        lines.append("")
+
+    # Column-level effects: per changed column, the EVIDENCE we hold today
+    # (what happened to it, which observed queries name it, which glossary
+    # term binds it). The column->consumer join needs column-level lineage
+    # and stays roadmap; this section is facts, not worst-case.
+    col_rows = []
+    for ch in report.model_changes:
+        col_events: dict[str, list[str]] = {}
+        for old, new in ch.renames:
+            col_events.setdefault(old, []).append(f"renamed → `{new}`")
+        for c in ch.columns:
+            if c.change == "removed" and c.name not in {o for o, _ in ch.renames}:
+                col_events.setdefault(c.name, []).append("removed")
+        for c in getattr(ch, "changed_expressions", []) or []:
+            col_events.setdefault(c, []).append("expression changed")
+        if "removed" in ch.kinds:
+            for c in ch.old_columns:
+                col_events.setdefault(c, []).append("model deleted")
+        for col, events in col_events.items():
+            import re as _re
+            q_hits = [q for q in report.queries.get(ch.model_name, [])
+                      if _re.search(rf"\b{_re.escape(col)}\b", q.sql,
+                                    _re.IGNORECASE)]
+            evidence = []
+            if q_hits:
+                evidence.append(f"{len(q_hits)} observed quer"
+                                f"{'y' if len(q_hits) == 1 else 'ies'} "
+                                "reference it")
+            for s in (report.suspected_drifts or []):
+                if s.model_name == ch.model_name and s.column == col:
+                    evidence.append(f"bound to glossary term "
+                                    f"**{s.term_name}**")
+            col_rows.append(f"| `{ch.model_name}.{col}` | "
+                            f"{'; '.join(events)} | "
+                            f"{'; '.join(evidence) or '—'} |")
+    if col_rows:
+        lines += ["### Column-level effects (evidence held today)", "",
+                  "| Column | What happened | Observed evidence |",
+                  "|---|---|---|"]
+        lines += col_rows
+        lines += ["",
+                  "> Which downstream consumers read each column needs "
+                  "column-level lineage — roadmap. Everything above is "
+                  "direct evidence, not inference.", ""]
 
     broken_queries = [(m, q) for m, qs in report.queries.items()
                       for q in qs if q.references_changed_column]
@@ -149,6 +205,40 @@ def render(report: ImpactReport, contracts: list[ContractResult],
                  + ") · reads DataHub for what's live, the PR for what's "
                  "proposed · never ingests hypothetical state._")
     return "\n".join(lines)
+
+
+def build_slack_payload(report: ImpactReport, pr_url: str) -> dict:
+    """One summary message for HIGH/CRITICAL runs (ADR-0010)."""
+    victims = []
+    seen = set()
+    for cs in report.consumers.values():
+        for c in cs:
+            key = c.urn or (c.name, c.platform, c.entity_type)
+            if key in seen or not c.impact:
+                continue
+            seen.add(key)
+            who = ", ".join(c.owners) if c.owners else "unowned"
+            victims.append(f"• {c.impact}: {c.name} ({who})")
+    text = (f":rotating_light: Downstream Impact Guardian — "
+            f"*{report.severity}* (score {report.score})\n"
+            f"{pr_url}\n" + "\n".join(victims[:10]))
+    return {"text": text}
+
+
+def notify_slack(report: ImpactReport, pr_url: str) -> None:
+    """Fire-and-forget: never fails the check (ADR-0010)."""
+    webhook = os.environ.get("SLACK_WEBHOOK_URL", "")
+    if not webhook or report.severity not in ("HIGH", "CRITICAL"):
+        return
+    try:
+        resp = requests.post(webhook, json=build_slack_payload(
+            report, pr_url), timeout=10)
+        resp.raise_for_status()
+        print("[guardian] slack notification sent")
+    except Exception as exc:
+        # never log exc details here — they can embed the webhook URL
+        print(f"[guardian] slack notification failed (non-fatal): "
+              f"{type(exc).__name__}")
 
 
 def post_comment(repo: str, pr_number: int, body: str, token: str) -> str:

@@ -47,6 +47,9 @@ inputs:
   openai-base-url:
     description: OpenAI-compatible base URL (e.g. Qwen/DashScope compat mode)
     default: ""
+  slack-webhook-url:
+    description: Slack incoming webhook — one summary message on HIGH/CRITICAL
+    default: ""
   github-token:
     description: Token used to post the PR comment
     default: ${{ github.token }}
@@ -122,6 +125,7 @@ runs:
         OPENAI_API_KEY: ${{ inputs.openai-api-key }}
         OPENAI_API_BASE: ${{ inputs.openai-base-url }}
         GITHUB_TOKEN: ${{ inputs.github-token }}
+        SLACK_WEBHOOK_URL: ${{ inputs.slack-webhook-url }}
         DATAHUB_PLATFORM: ${{ inputs.datahub-platform }}
         INPUT_WAREHOUSE_PROJECT: ${{ inputs.warehouse-project }}
         INPUT_WAREHOUSE_DATASET: ${{ inputs.warehouse-dataset }}

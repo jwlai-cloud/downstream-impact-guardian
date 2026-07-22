@@ -16,3 +16,4 @@ three-source detection, dual writeback, PR-bot interface) lives in
 | [0007](0007-offline-fixture-mode.md) | Offline fixture mode as a first-class agent mode |
 | [0008](0008-agent-runs-in-action.md) | Agent executes inside the Action runner, not Cloud Run |
 | [0009](0009-contract-per-impacted-model.md) | One Data Contract per impacted model |
+| [0010](0010-impact-levels-and-informing-protocol.md) | Per-consumer impact levels + stakeholder informing protocol |

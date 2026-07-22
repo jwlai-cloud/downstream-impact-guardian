@@ -29,6 +29,17 @@ def _changed_column_names(change: ModelChange) -> set[str]:
     return names
 
 
+def classify_impact(change: ModelChange) -> str:
+    """Per-consumer impact level (ADR-0010), worst-applicable-wins, derived
+    from the upstream change kind. Column-level lineage would refine this
+    per consumer; until then worst-case is the honest call."""
+    if change.breaking:          # removed model, or removed/renamed columns
+        return "BROKEN"
+    if "logic" in change.kinds:
+        return "DISTORTED"
+    return "ADVISORY"
+
+
 def assess(model_changes: list[ModelChange],
            glossary_changes: list[GlossaryChange],
            consumers: dict[str, list[Consumer]],
@@ -44,6 +55,11 @@ def assess(model_changes: list[ModelChange],
             score += W_LOGIC_PLAIN
 
         cs = consumers.get(change.model_name, [])
+        impact = classify_impact(change)
+        order = {"": 0, "ADVISORY": 1, "DISTORTED": 2, "BROKEN": 3}
+        for c in cs:
+            if order[impact] > order.get(c.impact, 0):
+                c.impact = impact
         score += min(len(cs) * W_PER_CONSUMER, W_CONSUMER_CAP)
         external = {c.platform for c in cs} - {"dbt", "bigquery"}
         score += len(external) * W_EXTERNAL_PLATFORM
@@ -60,6 +76,24 @@ def assess(model_changes: list[ModelChange],
             q.references_changed_column = hit
             if hit:
                 score += W_QUERY_HITS_CHANGED_COLUMN
+
+    # Worst-wins across INSTANCES: main.py fetches consumers per changed
+    # model, so the same entity appears as distinct objects. Aggregate by
+    # stable identity (urn, else name/platform/type), take max impact,
+    # union owners, and write back to every instance so any survivor of
+    # downstream dedup carries the correct verdict.
+    order = {"": 0, "ADVISORY": 1, "DISTORTED": 2, "BROKEN": 3}
+    by_key: dict[tuple, list[Consumer]] = {}
+    for cs in consumers.values():
+        for c in cs:
+            key = (c.urn,) if c.urn else (c.name, c.platform, c.entity_type)
+            by_key.setdefault(key, []).append(c)
+    for instances in by_key.values():
+        worst = max((i.impact for i in instances), key=lambda v: order.get(v, 0))
+        owners = sorted({o for i in instances for o in i.owners})
+        for i in instances:
+            i.impact = worst
+            i.owners = owners
 
     score += len(glossary_changes) * W_SEMANTIC_DRIFT
     score += len(suspected_drifts) * W_SUSPECTED_DRIFT

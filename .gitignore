@@ -22,3 +22,4 @@ dbt_demo_project/.user.yml
 
 # video raw captures
 video/raw/
+AGENTS.md

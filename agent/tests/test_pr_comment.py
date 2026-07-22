@@ -82,3 +82,55 @@ def test_render_no_contracts_says_so():
     report, ch = _report()
     body = pr_comment.render(report, [], [], mode="live")
     assert "no contract proposed" in body.lower()
+
+
+def test_blast_radius_table_shows_impact_and_owners():
+    ch = ModelChange(model_name="fct_orders",
+                     unique_id="model.f.fct_orders", kinds={"schema"})
+    ch.renames = [("order_total", "order_amount_usd")]
+    consumers = {"fct_orders": [
+        Consumer(name="Finance KPIs", platform="looker",
+                 entity_type="dashboard",
+                 owners=["finance-bi@fiction-retail.example"]),
+        Consumer(name="Monthly Board Pack", platform="looker",
+                 entity_type="dashboard", owners=[]),
+    ]}
+    report = blast_radius.assess([ch], [], consumers, {})
+    body = pr_comment.render(report, [], [], mode="offline")
+    assert "Worst-case impact" in body
+    assert "🔴 BROKEN" in body
+    assert "finance-bi@fiction-retail.example" in body
+    assert "unowned" in body            # governance finding, never hidden
+    assert "honest upper bound" in body
+
+
+def test_slack_payload_and_gating(monkeypatch):
+    ch = ModelChange(model_name="m", unique_id="model.f.m", kinds={"logic"})
+    consumers = {"m": [Consumer(name="Dash", platform="looker",
+                                entity_type="dashboard", owners=["bi@x"])]}
+    report = blast_radius.assess([ch], [], consumers, {})
+    payload = pr_comment.build_slack_payload(report, "https://pr/1")
+    assert "DISTORTED: Dash (bi@x)" in payload["text"]
+    # gating: LOW severity + no webhook -> no crash, no send
+    monkeypatch.delenv("SLACK_WEBHOOK_URL", raising=False)
+    pr_comment.notify_slack(report, "https://pr/1")
+
+
+def test_column_level_effects_section():
+    ch = ModelChange(model_name="fct_orders",
+                     unique_id="model.f.fct_orders",
+                     kinds={"schema", "logic"})
+    # field ships in PR #10; render() getattr-guards, so simulate here
+    ch.changed_expressions = ["gross_revenue"]
+    ch.renames = [("order_total", "order_amount_usd")]
+    ch.columns = [ColumnChange("order_total", "removed"),
+                  ColumnChange("order_amount_usd", "added")]
+    queries = {"fct_orders": [QueryUsage(
+        sql="SELECT SUM(order_total) FROM fct_orders")]}
+    report = blast_radius.assess([ch], [], {}, queries)
+    body = pr_comment.render(report, [], [], mode="offline")
+    assert "Column-level effects" in body
+    assert "`fct_orders.order_total` | renamed → `order_amount_usd` | "
+    assert "1 observed query reference it" in body
+    assert "expression changed" in body
+    assert "direct evidence, not inference" in body

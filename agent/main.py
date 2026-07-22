@@ -122,6 +122,7 @@ def run(args) -> int:
     print(f"[guardian] artifacts written to {out}/")
 
     pr_comment.write_step_summary(body)
+    pr_comment.notify_slack(report, pr_url)   # HIGH/CRITICAL + webhook only
     if not args.no_post and config.github_token and config.github_repository:
         try:
             url = pr_comment.post_comment(config.github_repository,
