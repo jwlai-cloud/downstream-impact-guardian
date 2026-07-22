@@ -12,8 +12,9 @@ nodes:
     terms:
       - name: Gross Revenue
         description: >
-          Sum of order_amount_usd over fulfilled (completed or shipped)
-          orders in the period, refunds excluded.
+          Sum of order_total over all non-cancelled orders in the period,
+          refunds included. Refunds are netted out downstream in net
+          revenue, never here.
         term_source: INTERNAL
       - name: Active Customer
         description: >
