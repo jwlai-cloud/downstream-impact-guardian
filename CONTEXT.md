@@ -66,8 +66,9 @@ running but its numbers silently change — downstream of metric drift),
 **ADVISORY** (only the business meaning shifted — semantic drift).
 Worst applicable level wins per consumer, and the level is an honest
 **upper bound** derived from the upstream change kind — a consumer that
-doesn't touch the changed columns is safe; column-level lineage refines
-this per consumer when adopted. *(Decided 2026-07-22 grill: orthogonal
+doesn't touch the changed columns *may be unaffected, but v1 cannot
+determine that per consumer*; declared column dependencies or
+column-level lineage upgrade the label to fact. *(Decided 2026-07-22 grill: orthogonal
 to Severity — Severity says how bad the PR is, impact level says what
 can happen to each victim.)*
 

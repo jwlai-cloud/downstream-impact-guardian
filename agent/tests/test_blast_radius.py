@@ -71,7 +71,12 @@ def test_impact_classification_worst_wins():
     drift = ModelChange(model_name="b", unique_id="m.b", kinds={"logic"})
     assert classify_impact(broken) == "BROKEN"
     assert classify_impact(drift) == "DISTORTED"
-    shared = Consumer(name="Dash", platform="looker", entity_type="dashboard")
-    consumers = {"a": [shared], "b": [shared]}
+    # production shape: SEPARATE instances of the same entity per model
+    inst_a = Consumer(name="Dash", platform="looker", entity_type="dashboard",
+                      urn="urn:li:dashboard:(looker,dash)", owners=["bi@x"])
+    inst_b = Consumer(name="Dash", platform="looker", entity_type="dashboard",
+                      urn="urn:li:dashboard:(looker,dash)")
+    consumers = {"a": [inst_a], "b": [inst_b]}
     blast_radius.assess([drift, broken], [], consumers, {})
-    assert shared.impact == "BROKEN"   # worst applicable wins
+    assert inst_a.impact == "BROKEN" and inst_b.impact == "BROKEN"
+    assert inst_a.owners == inst_b.owners == ["bi@x"]  # owners unioned too

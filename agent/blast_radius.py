@@ -56,10 +56,8 @@ def assess(model_changes: list[ModelChange],
 
         cs = consumers.get(change.model_name, [])
         impact = classify_impact(change)
+        order = {"": 0, "ADVISORY": 1, "DISTORTED": 2, "BROKEN": 3}
         for c in cs:
-            # worst-applicable-wins when several changed models reach the
-            # same consumer (BROKEN > DISTORTED > ADVISORY)
-            order = {"": 0, "ADVISORY": 1, "DISTORTED": 2, "BROKEN": 3}
             if order[impact] > order.get(c.impact, 0):
                 c.impact = impact
         score += min(len(cs) * W_PER_CONSUMER, W_CONSUMER_CAP)
@@ -78,6 +76,24 @@ def assess(model_changes: list[ModelChange],
             q.references_changed_column = hit
             if hit:
                 score += W_QUERY_HITS_CHANGED_COLUMN
+
+    # Worst-wins across INSTANCES: main.py fetches consumers per changed
+    # model, so the same entity appears as distinct objects. Aggregate by
+    # stable identity (urn, else name/platform/type), take max impact,
+    # union owners, and write back to every instance so any survivor of
+    # downstream dedup carries the correct verdict.
+    order = {"": 0, "ADVISORY": 1, "DISTORTED": 2, "BROKEN": 3}
+    by_key: dict[tuple, list[Consumer]] = {}
+    for cs in consumers.values():
+        for c in cs:
+            key = (c.urn,) if c.urn else (c.name, c.platform, c.entity_type)
+            by_key.setdefault(key, []).append(c)
+    for instances in by_key.values():
+        worst = max((i.impact for i in instances), key=lambda v: order.get(v, 0))
+        owners = sorted({o for i in instances for o in i.owners})
+        for i in instances:
+            i.impact = worst
+            i.owners = owners
 
     score += len(glossary_changes) * W_SEMANTIC_DRIFT
     score += len(suspected_drifts) * W_SUSPECTED_DRIFT

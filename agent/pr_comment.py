@@ -213,9 +213,10 @@ def build_slack_payload(report: ImpactReport, pr_url: str) -> dict:
     seen = set()
     for cs in report.consumers.values():
         for c in cs:
-            if c.name in seen or not c.impact:
+            key = c.urn or (c.name, c.platform, c.entity_type)
+            if key in seen or not c.impact:
                 continue
-            seen.add(c.name)
+            seen.add(key)
             who = ", ".join(c.owners) if c.owners else "unowned"
             victims.append(f"• {c.impact}: {c.name} ({who})")
     text = (f":rotating_light: Downstream Impact Guardian — "
@@ -230,11 +231,14 @@ def notify_slack(report: ImpactReport, pr_url: str) -> None:
     if not webhook or report.severity not in ("HIGH", "CRITICAL"):
         return
     try:
-        requests.post(webhook, json=build_slack_payload(
+        resp = requests.post(webhook, json=build_slack_payload(
             report, pr_url), timeout=10)
+        resp.raise_for_status()
         print("[guardian] slack notification sent")
     except Exception as exc:
-        print(f"[guardian] slack notification failed (non-fatal): {exc}")
+        # never log exc details here — they can embed the webhook URL
+        print(f"[guardian] slack notification failed (non-fatal): "
+              f"{type(exc).__name__}")
 
 
 def post_comment(repo: str, pr_number: int, body: str, token: str) -> str:
