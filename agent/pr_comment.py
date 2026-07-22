@@ -53,10 +53,13 @@ def render(report: ImpactReport, contracts: list[ContractResult],
     any_consumers = any(report.consumers.get(ch.model_name)
                         for ch in report.model_changes)
     if any_consumers:
-        lines += ["### Blast radius (from DataHub lineage — live systems, "
-                  "not this repo)", "",
-                  "| Downstream consumer | Platform | Type | Hops |",
-                  "|---|---|---|---|"]
+        lines += ["### Blast radius & who to inform (from DataHub lineage "
+                  "+ ownership — live systems, not this repo)", "",
+                  "| Downstream consumer | Platform | Type | Worst-case impact | "
+                  "Stakeholders to inform |",
+                  "|---|---|---|---|---|"]
+        impact_badge = {"BROKEN": "🔴 BROKEN", "DISTORTED": "🟠 DISTORTED",
+                        "ADVISORY": "🟡 ADVISORY", "": "—"}
         all_consumers = sorted(
             (c for ch in report.model_changes
              for c in report.consumers.get(ch.model_name, [])),
@@ -67,8 +70,17 @@ def render(report: ImpactReport, contracts: list[ContractResult],
             if key in seen:
                 continue  # same entity reachable from several changed models
             seen.add(key)
-            lines.append(f"| {c.name} | {c.platform} | "
-                         f"{c.entity_type} | {c.hops} |")
+            owners = (", ".join(c.owners) if c.owners
+                      else "⚠️ **unowned** — assign an owner in DataHub")
+            lines.append(f"| {c.name} | {c.platform} | {c.entity_type} | "
+                         f"{impact_badge.get(c.impact, c.impact)} | "
+                         f"{owners} |")
+        lines.append("")
+        lines.append("> Impact is the honest upper bound from the upstream "
+                     "change kind — a consumer not touching the changed "
+                     "columns is safe (cross-check the changed-column list "
+                     "above). Column-level lineage will refine this per "
+                     "consumer.")
         lines.append("")
 
     broken_queries = [(m, q) for m, qs in report.queries.items()
@@ -145,6 +157,36 @@ def render(report: ImpactReport, contracts: list[ContractResult],
                  + ") · reads DataHub for what's live, the PR for what's "
                  "proposed · never ingests hypothetical state._")
     return "\n".join(lines)
+
+
+def build_slack_payload(report: ImpactReport, pr_url: str) -> dict:
+    """One summary message for HIGH/CRITICAL runs (ADR-0010)."""
+    victims = []
+    seen = set()
+    for cs in report.consumers.values():
+        for c in cs:
+            if c.name in seen or not c.impact:
+                continue
+            seen.add(c.name)
+            who = ", ".join(c.owners) if c.owners else "unowned"
+            victims.append(f"• {c.impact}: {c.name} ({who})")
+    text = (f":rotating_light: Downstream Impact Guardian — "
+            f"*{report.severity}* (score {report.score})\n"
+            f"{pr_url}\n" + "\n".join(victims[:10]))
+    return {"text": text}
+
+
+def notify_slack(report: ImpactReport, pr_url: str) -> None:
+    """Fire-and-forget: never fails the check (ADR-0010)."""
+    webhook = os.environ.get("SLACK_WEBHOOK_URL", "")
+    if not webhook or report.severity not in ("HIGH", "CRITICAL"):
+        return
+    try:
+        requests.post(webhook, json=build_slack_payload(
+            report, pr_url), timeout=10)
+        print("[guardian] slack notification sent")
+    except Exception as exc:
+        print(f"[guardian] slack notification failed (non-fatal): {exc}")
 
 
 def post_comment(repo: str, pr_number: int, body: str, token: str) -> str:

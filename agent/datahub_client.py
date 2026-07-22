@@ -117,14 +117,26 @@ class LiveDataHubClient:
                        ... on Dataset {
                          name
                          platform { name }
+                         ownership { owners { owner {
+                           ... on CorpUser { username }
+                           ... on CorpGroup { name }
+                         } } }
                        }
                        ... on Dashboard {
                          properties { name }
                          platform { name }
+                         ownership { owners { owner {
+                           ... on CorpUser { username }
+                           ... on CorpGroup { name }
+                         } } }
                        }
                        ... on Chart {
                          properties { name }
                          platform { name }
+                         ownership { owners { owner {
+                           ... on CorpUser { username }
+                           ... on CorpGroup { name }
+                         } } }
                        }
                      }
                    }
@@ -139,12 +151,16 @@ class LiveDataHubClient:
         for r in results:
             e = r["entity"]
             name = e.get("name") or (e.get("properties") or {}).get("name") or e["urn"]
+            owners = [(o.get("owner") or {}).get("username")
+                      or (o.get("owner") or {}).get("name")
+                      for o in ((e.get("ownership") or {}).get("owners") or [])]
             consumers.append(Consumer(
                 name=name,
                 platform=(e.get("platform") or {}).get("name", "unknown"),
                 entity_type=e.get("type", "").lower(),
                 urn=e["urn"],
                 hops=r.get("degree", 1),
+                owners=[o for o in owners if o],
             ))
         # dbt ingestion creates a dbt + warehouse sibling per model; both
         # appear in lineage. Collapse to one logical consumer (lowest hops).

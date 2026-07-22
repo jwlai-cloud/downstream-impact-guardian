@@ -29,6 +29,17 @@ def _changed_column_names(change: ModelChange) -> set[str]:
     return names
 
 
+def classify_impact(change: ModelChange) -> str:
+    """Per-consumer impact level (ADR-0010), worst-applicable-wins, derived
+    from the upstream change kind. Column-level lineage would refine this
+    per consumer; until then worst-case is the honest call."""
+    if change.breaking:          # removed model, or removed/renamed columns
+        return "BROKEN"
+    if "logic" in change.kinds:
+        return "DISTORTED"
+    return "ADVISORY"
+
+
 def assess(model_changes: list[ModelChange],
            glossary_changes: list[GlossaryChange],
            consumers: dict[str, list[Consumer]],
@@ -44,6 +55,13 @@ def assess(model_changes: list[ModelChange],
             score += W_LOGIC_PLAIN
 
         cs = consumers.get(change.model_name, [])
+        impact = classify_impact(change)
+        for c in cs:
+            # worst-applicable-wins when several changed models reach the
+            # same consumer (BROKEN > DISTORTED > ADVISORY)
+            order = {"": 0, "ADVISORY": 1, "DISTORTED": 2, "BROKEN": 3}
+            if order[impact] > order.get(c.impact, 0):
+                c.impact = impact
         score += min(len(cs) * W_PER_CONSUMER, W_CONSUMER_CAP)
         external = {c.platform for c in cs} - {"dbt", "bigquery"}
         score += len(external) * W_EXTERNAL_PLATFORM

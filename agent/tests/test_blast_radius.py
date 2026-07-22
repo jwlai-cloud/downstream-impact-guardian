@@ -63,3 +63,15 @@ def test_semantic_drift_adds_weight_and_narrative():
     assert report.score == 3  # 1 logic + 2 drift
     assert report.severity == "MEDIUM"
     assert "Gross Revenue" in report.narrative
+
+
+def test_impact_classification_worst_wins():
+    from agent.blast_radius import classify_impact
+    broken = ModelChange(model_name="a", unique_id="m.a", kinds={"removed"})
+    drift = ModelChange(model_name="b", unique_id="m.b", kinds={"logic"})
+    assert classify_impact(broken) == "BROKEN"
+    assert classify_impact(drift) == "DISTORTED"
+    shared = Consumer(name="Dash", platform="looker", entity_type="dashboard")
+    consumers = {"a": [shared], "b": [shared]}
+    blast_radius.assess([drift, broken], [], consumers, {})
+    assert shared.impact == "BROKEN"   # worst applicable wins

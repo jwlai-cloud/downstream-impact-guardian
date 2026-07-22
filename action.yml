@@ -35,6 +35,9 @@ inputs:
   google-api-key:
     description: Gemini API key for the ADK narrative agent (optional)
     default: ""
+  slack-webhook-url:
+    description: Slack incoming webhook — one summary message on HIGH/CRITICAL
+    default: ""
   github-token:
     description: Token used to post the PR comment
     default: ${{ github.token }}
@@ -107,6 +110,7 @@ runs:
         DATAHUB_GMS_TOKEN: ${{ inputs.datahub-token }}
         GOOGLE_API_KEY: ${{ inputs.google-api-key }}
         GITHUB_TOKEN: ${{ inputs.github-token }}
+        SLACK_WEBHOOK_URL: ${{ inputs.slack-webhook-url }}
         DATAHUB_PLATFORM: ${{ inputs.datahub-platform }}
         INPUT_WAREHOUSE_PROJECT: ${{ inputs.warehouse-project }}
         INPUT_WAREHOUSE_DATASET: ${{ inputs.warehouse-dataset }}
