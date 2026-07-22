@@ -196,6 +196,48 @@ status/customProperties) and the human approval gate is the PR merge
 itself. This stays honest to the original intent (a human approves new
 contracts) without depending on a Cloud-only mutation.
 
+## 12. Related work — Pinterest's automated schema evolution (2026-07-17)
+
+Reference: https://medium.com/pinterest-engineering/automated-schema-evolution-in-pinterests-next-generation-db-ingestion-framework-36c5c07070de
+(verified via fetch 2026-07-17). Condensed prose version lives in
+docs/SUBMISSION.md → Inspiration.
+
+**Where it's genuinely similar:**
+- Same worldview, their exact words: schema is "a cross-system contract
+  spanning ingestion, transformation, storage" — our thesis, validated at
+  Pinterest scale.
+- Both detect schema changes (they: DDL CDC push + daily reconciliation
+  pull; we: prod-vs-PR dbt manifest diff).
+- Both respond with generated code handed to humans: they regenerate
+  Flink/Spark code and open it as a PR for review; we generate
+  compat/legacy dbt views posted on the PR.
+- Both gate risky changes on humans — their automation is strictly
+  additive-only (column adds, nullable type widening); everything
+  destructive stays manual.
+
+**Where it's different — the differences are our pitch:**
+- No lineage, no catalog, no downstream-consumer analysis in their
+  system. They can afford that because Pinterest owns the entire pipeline
+  end to end. A typical data team owns a dbt repo, not the pipeline —
+  catalog context (DataHub) is what substitutes for pipeline ownership.
+  That's exactly the gap we fill.
+- Structural changes only. They explicitly don't handle business-logic or
+  semantic/definition changes; we cover metric drift and glossary drift
+  as first-class detection sources.
+- Layer: theirs operates at the CDC/ingestion layer (MySQL → Kafka/Flink
+  → Iceberg) with runtime enforcement; ours is shift-left at PR time in
+  the transform layer.
+
+**Honest framing (both directions):** they're much deeper on the
+automation axis — actual schema evolution, backfills, Iceberg metadata
+updates. We're broader on the consequence axis — consumer-aware severity,
+semantics, contracts. Complementary layers, not competitors.
+
+It's a strong submission comparison precisely because a top-tier
+engineering org built a whole framework for the same problem and still
+left the cross-system consequence question unanswered — that's the part
+only a metadata graph can answer.
+
 **Judge-path secrets hole, and the fix.** Fork PRs receive no repository
 secrets, so an agent triggered from a forked PR can reach neither DataHub
 nor Gemini. Two-part fix: (a) the documented judge path is opening a PR
