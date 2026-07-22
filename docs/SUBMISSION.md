@@ -81,6 +81,19 @@ On every pull request it:
    compatibility code — `*_compat` / `*_legacy` dbt views and schema.yml
    tests that keep old consumers alive through the change.
 
+**Demo scale, honestly.** The demo world is deliberately small: a
+four-model dbt project, and the downstream dashboard/query lineage in
+offline mode comes from mocked fixtures (clearly labeled in the report).
+Don't let the size hide the shape of the real problem. In production this
+is **multiple repos, thousands of models, and Looker dashboards
+everywhere** — and each team has access to only a few of those repos, so
+*no one* can see the whole graph from where they sit. That's precisely why
+the agent's judgment must come from the catalog and not the codebase:
+DataHub is the catalog center, the source of truth for what's live, and
+the historical snapshot reference for what changed. The agent's
+architecture is scale-independent — it reads whatever lineage the catalog
+holds, whether that's four models or four thousand.
+
 Two invariants make it trustworthy rather than magical:
 
 - **DataHub only ever reflects reality.** The PR is read locally as a
@@ -279,7 +292,7 @@ S = static diagram.
 | 7 | 1:15–1:30 | A | "Queries that WILL break" section | "These are real observed queries — they still reference the old column. Guaranteed breakage." | highlight box on `order_total` in SQL |
 | 8 | 1:30–1:45 | A | Semantic drift + generated compat view | "And it doesn't just warn — it writes the fix. A compat view, mergeable as-is." | zoom on `order_amount_usd as order_total` |
 | 9 | 1:45–2:00 | C | DataHub lineage graph → contract entity (PENDING + provenance) | "Writeback two: a Data Contract, proposed into the catalog — the next team inherits the knowledge." | raw UI nav @1×, speed-ramp 2× between screens |
-| 10 | 2:00–2:25 | S/D | Architecture diagram, then Pinterest edge beats | Edge segment VO (appendix above) | text-overlay beats: `Pinterest ✓` → `no lineage · structure only` → `missing half = DataHub` |
+| 10 | 2:00–2:25 | S/D | Architecture diagram, then Pinterest edge beats | Edge segment VO (appendix above) — end on the scale line: "The demo is four models and mocked dashboards — honestly labeled. Production is thousands of models across repos no single team can see. That's why the judgment comes from the catalog, not the codebase." | text-overlay beats: `Pinterest ✓` → `no lineage · structure only` → `missing half = DataHub` → `4 models here · 4,000 in prod · same agent` |
 | 11 | 2:25–2:33 | T | `pytest -q` → `26 passed in 0.2s` | "Deterministic core — the LLM narrates, it never scores and never writes the merged code." | big number overlay: **26 tests · 0.2 s** |
 | 12 | 2:33–2:43 | S | Adoption `uses:` block | "One block in any dbt repo. The runner is the bot." | code overlay, typewriter reveal |
 | 13 | 2:43–2:50 | S | Repo URL + "open the demo PR yourself" | "Downstream Impact Guardian. The PR looks fine. DataHub knows better." | hold ≥5 s, readable |
