@@ -236,3 +236,34 @@ On-screen beats: `Pinterest: schema = cross-system contract ✓` →
 
 Full structured comparison (similar/different/honest-framing):
 docs/SPEC.md §12.
+
+### Shot list (~2:50 total — verify the platform's hard limit before locking)
+
+**Recording strategy: capture everything RAW at natural speed, then
+accelerate in post** (`ffmpeg setpts` speed-ramps; dead time excised, not
+skipped on camera). Raw captures stay in `video/raw/` (gitignored) so any
+beat can be re-cut without re-shooting. GitHub scrolls driven by
+Playwright, not hand-mousing — deterministic re-takes.
+
+Sources: tab A = GitHub PR #5 · tab B = Actions run · tab C = DataHub UI
+(local quickstart) · tab D = how-it-works artifact · T = terminal ·
+S = static diagram.
+
+| # | Time | Src | On screen | Narration / overlay | Technique |
+|---|---|---|---|---|---|
+| 1 | 0:00–0:08 | S | Black slate → title | "Every data team has lived this PR." | title fade-in |
+| 2 | 0:08–0:20 | A | PR #5 diff, slow scroll over the 3 changes | "A column rename. A metric quietly redefined. A glossary edit. Tests pass. CI is green." | raw scroll @1×, cut tight |
+| 3 | 0:20–0:28 | A | Checks section, bot reviews visible, all green | "Nothing in this repo knows anything is wrong." | highlight box on green checks |
+| 4 | 0:28–0:40 | B | Action run: steps executing start-to-finish | "On every PR, the guardian wakes up inside GitHub Actions — no server, no bot host." | **raw 48 s → 8× ≈ 6 s** timelapse, then 1× on the final green step |
+| 5 | 0:40–1:00 | A | Comment reveal: 🔴 CRITICAL header | "It read DataHub — and found what the repo can't see." | hard cut, zoom-in on severity line |
+| 6 | 1:00–1:15 | A | Blast radius table | "A finance dashboard. A marketing feature table. The board pack. None of them live in this repo." | Ken Burns across table rows |
+| 7 | 1:15–1:30 | A | "Queries that WILL break" section | "These are real observed queries — they still reference the old column. Guaranteed breakage." | highlight box on `order_total` in SQL |
+| 8 | 1:30–1:45 | A | Semantic drift + generated compat view | "And it doesn't just warn — it writes the fix. A compat view, mergeable as-is." | zoom on `order_amount_usd as order_total` |
+| 9 | 1:45–2:00 | C | DataHub lineage graph → contract entity (PENDING + provenance) | "Writeback two: a Data Contract, proposed into the catalog — the next team inherits the knowledge." | raw UI nav @1×, speed-ramp 2× between screens |
+| 10 | 2:00–2:25 | S/D | Architecture diagram, then Pinterest edge beats | Edge segment VO (appendix above) | text-overlay beats: `Pinterest ✓` → `no lineage · structure only` → `missing half = DataHub` |
+| 11 | 2:25–2:33 | T | `pytest -q` → `26 passed in 0.2s` | "Deterministic core — the LLM narrates, it never scores and never writes the merged code." | big number overlay: **26 tests · 0.2 s** |
+| 12 | 2:33–2:43 | S | Adoption `uses:` block | "One block in any dbt repo. The runner is the bot." | code overlay, typewriter reveal |
+| 13 | 2:43–2:50 | S | Repo URL + "open the demo PR yourself" | "Downstream Impact Guardian. The PR looks fine. DataHub knows better." | hold ≥5 s, readable |
+
+Post checklist: sound-off watchability pass; every number matches this doc
+(26 tests, CRITICAL 22, 48 s run); total runtime under the platform limit.

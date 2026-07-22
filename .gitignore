@@ -19,3 +19,6 @@ service-account*.json
 
 # dbt local state
 dbt_demo_project/.user.yml
+
+# video raw captures
+video/raw/
