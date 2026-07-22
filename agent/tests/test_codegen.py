@@ -91,6 +91,22 @@ def test_cascading_deletion_retargets_legacy_refs():
     assert "ref('stg_orders')" in up_art.sql
 
 
+def test_ref_to_deleted_upstream_without_sql_is_flagged():
+    """Upstream deleted with NO recoverable SQL: downstream legacy view
+    can't be auto-fixed — must be flagged, never silently uncompilable."""
+    up = ModelChange(model_name="mystery_model", unique_id="model.f.mystery",
+                     kinds={"removed"}, old_sql="")
+    down = ModelChange(
+        model_name="revenue_daily", unique_id="model.f.revenue_daily",
+        kinds={"removed"},
+        old_sql="select * from {{ ref('mystery_model') }}",
+        old_columns=["order_date"])
+    arts = codegen.generate_all([up, down])
+    assert [a.view_name for a in arts] == ["revenue_daily_legacy"]
+    assert arts[0].requires_human
+    assert "FIXME: model deleted in this PR" in arts[0].sql
+
+
 def test_deleted_model_without_sql_gets_nothing():
     ch = ModelChange(model_name="m", unique_id="model.f.m",
                      kinds={"removed"}, old_sql="")

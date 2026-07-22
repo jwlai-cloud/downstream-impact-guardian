@@ -72,11 +72,13 @@ def generate_compat_view(change: ModelChange) -> CompatArtifact | None:
 
 
 def generate_legacy_view(change: ModelChange,
-                         compat_views: dict[str, str]) -> CompatArtifact | None:
+                         compat_views: dict[str, str],
+                         unresolvable: set[str] | None = None) -> CompatArtifact | None:
     """Logic-only change, or a DELETED model -> a `<model>_legacy` view
     carrying the OLD SQL, so consumers keep a working relation. If an
     upstream model got a compat view in the same PR, retarget refs at it so
-    the legacy SQL still compiles."""
+    the legacy SQL still compiles. Refs to models deleted WITHOUT a legacy
+    target can't be fixed automatically -> flagged requires_human."""
     is_removed = "removed" in change.kinds
     is_logic_only = "logic" in change.kinds and "schema" not in change.kinds
     if not (is_removed or is_logic_only) or not change.old_sql.strip():
@@ -84,6 +86,16 @@ def generate_legacy_view(change: ModelChange,
     old_sql = change.old_sql
     for model, compat in compat_views.items():
         old_sql = old_sql.replace(f"ref('{model}')", f"ref('{compat}')")
+
+    requires_human = False
+    for gone in (unresolvable or set()):
+        marker = f"ref('{gone}')"
+        if marker in old_sql:
+            requires_human = True
+            old_sql = old_sql.replace(
+                marker,
+                marker + "  -- FIXME: model deleted in this PR with no "
+                         "recoverable SQL; repoint or drop this ref")
 
     view_name = f"{change.model_name}_legacy"
     why = ("this PR DELETES the model; consumers need a relation to migrate "
@@ -102,6 +114,7 @@ def generate_legacy_view(change: ModelChange,
               by Downstream Impact Guardian — {why}.
         """)
     return CompatArtifact(view_name=view_name, sql=sql, schema_yml=yml,
+                          requires_human=requires_human,
                           for_model=change.model_name)
 
 
@@ -115,13 +128,19 @@ def generate_all(changes: list[ModelChange]) -> list[CompatArtifact]:
             retarget[ch.model_name] = art.view_name
     # Deleted upstreams must be retargeted too: a legacy view whose SQL
     # refs a model this same PR deletes would fail dbt build. Register all
-    # legacy names BEFORE rendering (cascading deletions).
+    # legacy names BEFORE rendering (cascading deletions). Deleted models
+    # with NO recoverable SQL get no legacy target — downstream refs to
+    # them are unresolvable and flag the artifact for a human.
+    unresolvable: set[str] = set()
     for ch in changes:
-        if "removed" in ch.kinds and ch.old_sql.strip():
-            retarget[ch.model_name] = f"{ch.model_name}_legacy"
+        if "removed" in ch.kinds:
+            if ch.old_sql.strip():
+                retarget[ch.model_name] = f"{ch.model_name}_legacy"
+            else:
+                unresolvable.add(ch.model_name)
     for ch in changes:
         art = generate_legacy_view(ch, {m: v for m, v in retarget.items()
-                                        if m != ch.model_name})
+                                        if m != ch.model_name}, unresolvable)
         if art:
             artifacts.append(art)
     return artifacts
