@@ -26,7 +26,11 @@ export default async function handler(req, res) {
       gh(`/commits/${encodeURIComponent(branch)}/check-runs`),
       gh(`/issues/${pr}/comments?per_page=50`),
     ]);
-    const guardian = (comments || []).find((c) => (c.body || "").includes(MARKER));
+    // Author check is load-bearing: anyone can comment on a public PR with
+    // the marker string — only the Action's own comment may be rendered.
+    const guardian = (comments || []).find(
+      (c) => c.user && c.user.login === "github-actions[bot]" &&
+             (c.body || "").includes(MARKER));
     return res.status(200).json({
       checks: (checks.check_runs || []).map((c) => ({
         name: c.name,

@@ -95,6 +95,7 @@
 </main>
 <script type="module">
 import { marked } from "https://cdn.jsdelivr.net/npm/marked@12/lib/marked.esm.js";
+import DOMPurify from "https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.es.mjs";
 
 let scenario = "rename";
 document.querySelectorAll(".card").forEach(c => c.onclick = () => {
@@ -139,7 +140,7 @@ async function poll(pr, branch, t0) {
       set("t3","done",`Report posted — <a href="${j.commentUrl}" target="_blank">view on GitHub</a>`);
       const rep = $("report");
       rep.style.display = "block";
-      rep.innerHTML = marked.parse(j.comment);
+      rep.innerHTML = DOMPurify.sanitize(marked.parse(j.comment));
       $("go").disabled = false;
       return;
     }
