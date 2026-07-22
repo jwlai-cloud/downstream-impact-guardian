@@ -45,6 +45,35 @@ flowchart LR
     CM --> GH[("GitHub PR")]
 ```
 
+## ADK topology (deliberately flat)
+
+One `LlmAgent`, no sub-agents, no orchestration graph — the harness is
+supposed to be boring (SPEC §10); the judged novelty lives in what the
+agent reads and writes, not how it's wired.
+
+```
+deterministic pipeline (main.py)          ← owns control flow, always runs
+   └── enrich_narrative()                 ← live mode only, best-effort,
+        └── ADK Runner                       120s bound, failure = keep
+             └── InMemorySessionService        deterministic narrative
+             └── Agent "downstream_impact_guardian"
+                  ├── model: resolve_model(GUARDIAN_NARRATIVE_MODEL)
+                  │     gemini-* → ADK-native string
+                  │     else     → LiteLlm(id)  (OpenAI, Qwen via
+                  │                              OPENAI_API_BASE, …)
+                  └── tools: build_google_adk_tools(DataHubClient)
+                        10 read-only Agent Context Kit tools
+                        (lineage, queries, assertions, schema, search);
+                        3 local wrappers as fallback if the Kit
+                        can't initialize
+```
+
+Per CI run: one session, one user message (the detected facts as JSON),
+one final response (narrative + top-3 actions). The agent may call
+DataHub tools to verify facts; it can never mutate anything
+(`include_mutations=False`) and its output never gates scoring, codegen,
+or contracts.
+
 ## Two invariants everything hangs off
 
 1. **DataHub only ever reflects reality.** The PR diff is read locally as
@@ -62,16 +91,17 @@ flowchart LR
 | `action.yml` | **Reusable composite action** — any dbt repo adopts the guardian with one `uses:` block (inputs: dbt project dir, DataHub URL/token, warehouse coords, platform, strict). No hosting: runs on the consumer's Action runner. |
 | `.github/workflows/downstream-impact-guardian-check.yml` | This repo dogfooding its own action on PRs touching `dbt_demo_project/**`. Fork-safe (ADR-0007). |
 | `agent/main.py` | Orchestrates steps 1–6; CLI contract `--pr-number N`; exit 0 unless `--strict` |
-| `agent/dbt_state.py` | Detection #1/#2: committed prod manifest (ADR-0006) vs PR manifest — column diff, rename heuristic, normalized-SQL logic diff. Detection #3: PR glossary yml vs live DataHub terms |
+| `agent/dbt_state.py` | Detection #1/#2: committed prod manifest (ADR-0006) vs PR manifest — column diff, rename heuristic, normalized-SQL logic diff, **deleted-model sweep** (a removed model is a first-class breaking change), **per-column expression attribution** (sqlglot; filters/joins changes stay model-level by design since they alter every column's values). Detection #3: PR glossary yml vs live DataHub terms + suspected drift for term-bound columns |
 | `agent/datahub_client.py` | `LiveDataHubClient` (GraphQL) / `FixtureDataHubClient` (committed JSON), same protocol |
 | `agent/blast_radius.py` | Lineage + query cross-reference; inspectable additive scoring → LOW/MEDIUM/HIGH/CRITICAL |
 | `agent/contract.py` | Writeback 1: upsert → SDK-emission fallback, PROPOSED provenance (ADR-0003) |
 | `agent/codegen.py` | Writeback 2 payload: deterministic `*_compat` / `*_legacy` views, live schema as the old-shape authority, `requires_human` flag for unmappable cases |
-| `agent/adk_agent.py` | Google ADK `Agent` (gemini-flash-latest); tools from the first-party **DataHub Agent Context Kit** (`build_google_adk_tools`, read-only) plus a local observed-queries tool; local wrappers as fallback. Narrative only |
+| `agent/adk_agent.py` | Google ADK `Agent`; model pluggable via `GUARDIAN_NARRATIVE_MODEL` (Gemini native, or any LiteLLM id — OpenAI/Qwen via OpenAI-compatible base URL); tools from the first-party **DataHub Agent Context Kit** (read-only), local wrappers as fallback; 120s bound. Narrative only — see "ADK topology" |
 | `agent/pr_comment.py` | Renders + posts one idempotent comment (HTML marker), mirrors to `$GITHUB_STEP_SUMMARY` |
 | `dbt_demo_project/` | fiction-retail: seeds → staging → `fct_orders` → `revenue_daily`; glossary + ingestion recipes (ADR-0001, ADR-0005) |
 | `examples/generated/` | Real output of a run against `demo/breaking-change` |
-| `tools/demo_ui/` | Stretch goal only — untouched, per CLAUDE.md |
+| `tools/demo_ui/web/` | **The one-button demo (live)** — Vercel page + 2 serverless functions: click → unique `demo/run-*` branch + PR on the consumer repo → poll check → render the guardian's comment inline (bot-author-verified + DOMPurify-sanitized). PAT scoped to the demo repo only |
+| [`fiction-retail-dbt`](https://github.com/jwlai-cloud/fiction-retail-dbt) | **Independent consumer repo** — integrates via one `uses:` block; three standing draft demo PRs: #1 rename+drift+glossary (CRITICAL 22), #2 whole-model deletion (CRITICAL 10), #3 silent metric drift + suspected semantic drift (HIGH 6) |
 
 ## Modes
 
