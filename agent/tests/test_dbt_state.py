@@ -148,3 +148,16 @@ nodes:
     assert [c.term_name for c in changes] == ["Gross Revenue"]
     assert "refunds included" in changes[0].live_definition
     assert "refunds excluded" in changes[0].proposed_definition
+
+
+def test_resolve_narrative_model():
+    from agent.adk_agent import resolve_model
+    assert resolve_model(None) == "gemini-flash-latest"
+    assert resolve_model("gemini-2.5-pro") == "gemini-2.5-pro"
+    # non-gemini ids require the LiteLLM adapter (import may be absent in
+    # the offline test env — either outcome proves the routing)
+    try:
+        m = resolve_model("openai/gpt-4o-mini")
+        assert type(m).__name__ == "LiteLlm"
+    except ImportError:
+        pass

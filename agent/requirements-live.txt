@@ -4,3 +4,5 @@
 google-adk>=1.0
 acryl-datahub>=0.13
 datahub-agent-context[google-adk]
+# Non-Gemini narrative models (OpenAI, Qwen via OpenAI-compatible base URL)
+litellm>=1.40
