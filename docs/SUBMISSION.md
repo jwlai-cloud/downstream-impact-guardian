@@ -110,12 +110,16 @@ down on):
 3. **Column-level evidence today.** sqlglot expression diffing attributes
    logic changes to specific fields; observed queries are matched per
    column; a Column-level effects table shows facts, not inference.
-4. **A precision ladder for consumer impact**: *declared* column
-   dependencies (consumers state what they read, via their own dbt meta
-   ingested into DataHub — match = BROKEN as fact, no-match = SAFE) >
-   *derived* column-level lineage (one ingestion flag + querying from the
-   changed column's schemaField urn — roadmap) > *worst-case* (always
-   available). Each rung degrades honestly to the one below.
+4. **A precision ladder for consumer impact** — *declared* > *derived* >
+   *worst-case*. Declared is SHIPPED: consumers state what they read via
+   `depends_on_columns` in their own dbt meta (ingested as custom
+   properties); the guardian intersects with changed columns — match =
+   BROKEN as fact, no match = 🟢 **SAFE**, the one verdict worst-case can
+   never give. Derived (column-level lineage from the changed column's
+   schemaField urn) is the roadmap rung; worst-case is always available.
+   Each rung degrades honestly to the one below, and the agent audits
+   declarations against observed queries — manufacturing the governance
+   it consumes.
 
 Two invariants make it trustworthy rather than magical:
 
