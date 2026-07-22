@@ -5,7 +5,8 @@ Running log. Read this first when resuming; update at end of every session.
 ## Current state (2026-07-22)
 
 **Core loop: DONE and proven on real infrastructure.** The standing demo
-PR (#1) carries a guardian report posted by the actual GitHub Action —
+PR (#5, draft — replaces #1 after its accidental merge + revert) carries
+a guardian report posted by the actual GitHub Action —
 offline fixture mode, CRITICAL severity, both contract payloads recorded,
 comment idempotent. The live path (DataHub lineage, glossary drift,
 `upsertDataContract` + PENDING status aspect) is verified against a real
@@ -23,7 +24,7 @@ Done, in order:
   repo; ADK narrative reads via DataHub Agent Context Kit; `.mcp.json`
   interactive surface via `mcp-server-datahub`.
 - Published: master PR-protected; PR #2 (action env/injection fixes)
-  reviewed by 3 bots, all comments addressed, merged; PR #1 re-triggered
+  reviewed by 3 bots, all comments addressed, merged; demo PR re-triggered
   and green.
 - Submission collateral: docs/SUBMISSION.md draft (Devpost sections +
   Pinterest related-work comparison + video "edge" segment), two Claude
@@ -35,7 +36,7 @@ Done, in order:
    on debit card; needs a credit card retry) or GCE e2-standard-2 in
    `agent-era` (~$35, zero friction, everything scripted). Then:
    `scripts/oracle_vm_setup.sh` (works on any Ubuntu box) → harden →
-   `scripts/ingest_all.sh` → repo secrets → PR #1 reruns in live mode.
+   `scripts/ingest_all.sh` → repo secrets → demo PR #5 reruns in live mode.
 2. **Gemini key** (`GOOGLE_API_KEY` secret) — exercises the ADK/ACK
    narrative path end-to-end; set a spend cap on the key when creating it.
 3. **Demo video** (3 min) — script skeleton in docs/SUBMISSION.md appendix;
@@ -56,3 +57,12 @@ Done, in order:
   when the judge instance is up (docs/ARCHITECTURE.md "live-mode gaps").
 - Oracle vs GCE — resolve by ~Aug 10 so the instance soaks before the
   Aug 17–31 judging window.
+
+## Incident log (2026-07-22)
+
+Demo PR #1 was accidentally merged minutes after its check went green,
+putting the staged breaking state onto master. Caught the same hour by the
+brand-new `tests.yml` — the unit suite failed on PR #3's merge ref because
+master's glossary now drifted against the fixtures. Reverted via PR #4;
+demo recreated as **draft** PR #5 (drafts cannot be merged). Lesson
+encoded: the standing demo PR stays a draft forever.

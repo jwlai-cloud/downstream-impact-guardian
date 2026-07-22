@@ -112,7 +112,7 @@ deterministic compat codegen → idempotent PR comment. See
 `docs/SPEC.md` for design history, `docs/PROGRESS.md` for current state,
 and `CLAUDE.md` for working context. The live path (lineage, glossary
 drift, `upsertDataContract`) is verified against a real self-hosted OSS
-instance; the standing demo PR (#1) carries a real guardian report posted
+instance; the standing demo PR (#5, draft) carries a real guardian report posted
 by the Action. Remaining before submission: judge-facing instance
 (`docs/ORACLE_BRINGUP.md`), repo secrets, demo video.
 
