@@ -32,16 +32,15 @@ Done, in order:
 
 ## Next (priority order)
 
-1. **Judge-facing DataHub instance** — plan A: Oracle Always Free
-   (signup previously failed on a debit card; retry with a physical
-   credit card, home network, ap-melbourne-1, then PAYG upgrade).
-   Plan B tripwire: GCE e2-standard-2 in `agent-era` (~$35, zero
-   friction) the same day Oracle fails again. Investigated and ruled
-   out 2026-07-22: DataHub Cloud free trials (both the sales-contact
-   path and the datahub.com/google-cloud-free-trial page) are
-   sales-gated — no self-serve signup exists. Once a box exists:
+1. **Judge-facing DataHub instance — pick a row from
+   docs/DEPLOY_OPTIONS.md** (2026-07-23; AWS demoted — $65 judged too
+   expensive). Menu: Hetzner CAX31 (~$16 total, recommended), Oracle
+   Always Free ($0, credit-card retry), local Mac + Cloudflare Tunnel
+   ($0, fragile), GCE/AWS (~$65, credits-only), or no instance
+   (video+repo evidence — rules permit). Cloud trials verified
+   sales-gated 2026-07-22. Once any box exists:
    `scripts/oracle_vm_setup.sh` (any Ubuntu host) → harden →
-   `scripts/ingest_all.sh` → repo secrets → demo PR #5 reruns live.
+   `scripts/ingest_all.sh` → repo secrets → demo PRs rerun live.
 2. **Gemini key** (`GOOGLE_API_KEY` secret) — exercises the ADK/ACK
    narrative path end-to-end; set a spend cap on the key when creating it.
 3. **Demo video** (3 min) — script skeleton in docs/SUBMISSION.md appendix;
@@ -60,8 +59,9 @@ Done, in order:
 - `pluginUsage`-style question for judges: does live lineage need query
   usage + a Looker layer ingested, or do fixtures carry that story? Decide
   when the judge instance is up (docs/ARCHITECTURE.md "live-mode gaps").
-- Oracle vs GCE — resolve by ~Aug 10 so the instance soaks before the
-  Aug 17–31 judging window.
+- Which DEPLOY_OPTIONS.md row — resolve by ~Aug 10 so the instance
+  soaks before the Aug 17–31 judging window (Hetzner recommended;
+  soak-from-Aug-16 trims any paid row ~30%).
 
 ## Incident log (2026-07-22)
 
