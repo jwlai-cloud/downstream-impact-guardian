@@ -174,8 +174,12 @@ class LiveDataHubClient:
                    }
                  }
                }""",
+            # skipCache: GMS caches searchAcrossLineage per (urn, direction);
+            # a stale entry means a stale blast radius — freshness beats
+            # latency for a judgment that names stakeholders.
             {"input": {"urn": urn, "direction": "DOWNSTREAM",
-                       "query": "*", "start": 0, "count": 50}},
+                       "query": "*", "start": 0, "count": 50,
+                       "searchFlags": {"skipCache": True}}},
         )
         results = ((data.get("searchAcrossLineage") or {})
                    .get("searchResults") or [])
