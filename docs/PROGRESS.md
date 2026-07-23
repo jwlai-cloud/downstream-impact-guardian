@@ -126,7 +126,27 @@ variables GUARDIAN_NARRATIVE_MODEL/OPENAI_BASE_URL set (Qwen flash),
 consumer PR #6 passes them through (awaiting merge).
 
 Capture rig (Playwright) built: 24 stills incl. highlighted judge
-variants, DataHub lineage/glossary/schema, workbench, button page. VO
-script v3 (13 beats, 2:54): pain-point opening, sqlglot/YAML/ACK named,
-advisory-not-blocking + Slack beat. Awaiting: .env with TTS key,
-consumer PR #6 merge, then TTS + motion + assembly.
+variants, DataHub lineage/glossary/schema, workbench, button page,
+PR #5 SAFE-row shot. VO COMPLETE: 13 beats generated via OpenAI TTS
+(gpt-4o-mini-tts, onyx), ~201s raw -> ~2:55 at 1.15x; script covers
+pain-point opening, three detectors (sqlglot named), advisory+Slack,
+ladder+SAFE, agent edge (tool-verified synthesis + ranked actions),
+template-without-key trust line.
+
+Narrative honesty shipped (#22 + consumer #6, both merged): validation
+matrix (configured model + missing key FAILS the check with the exact
+secret to add; live-mode only — fork offline stays first-class),
+::error:: annotations on runtime LLM failure, comment attributes its
+writer (model id vs "no narrative LLM configured"), docs reframed
+real-LLM-first. Provider = repo config: GUARDIAN_NARRATIVE_MODEL +
+OPENAI_BASE_URL vars + OPENAI_API_KEY secret set on both repos (Qwen
+flash). 47 tests. Blog gained §6 "Live-mode day" (tunnel, seeding,
+skipCache bug, honesty protocol, SAFE staging).
+
+Competitor recon (ForgetOps, submitted): zero LLM agents — pure
+deterministic loop; validates our invariants, leaves us differentiated
+on the real tool-using agent. Tactics adopted: Pages workbench (live),
+JUDGING.md pending. Remaining: verify first Qwen-attributed run (fresh
+runs only — gh run rerun replays old workflow snapshots), diagram
+slides + Slack mock, motion captures, assembly, JUDGING.md, DataHub
+docs-fix PR (bonus). User-side: deploy row by ~Aug 10, Devpost form.
