@@ -110,7 +110,9 @@
     <button role="tab" aria-selected="false" data-s="2">Whole model deleted
       <span class="v crit">🔴 CRITICAL (10) · PR #2</span></button>
     <button role="tab" aria-selected="false" data-s="3">One WHERE clause tightened
-      <span class="v high">🟠 HIGH (6) · suspected semantic drift · PR #3</span></button>
+      <span class="v high">🟠 HIGH · suspected semantic drift · PR #3</span></button>
+    <button role="tab" aria-selected="false" data-s="5">Pure expression tweak
+      <span class="v ok" style="color:var(--ok)">🟢 SAFE row — precision-ladder showcase · PR #5</span></button>
   </div>
   <p class="meta">
     <span id="live-link"></span>
@@ -147,7 +149,8 @@
 <script>
   const PRS = {1:"https://github.com/jwlai-cloud/fiction-retail-dbt/pull/1",
                2:"https://github.com/jwlai-cloud/fiction-retail-dbt/pull/2",
-               3:"https://github.com/jwlai-cloud/fiction-retail-dbt/pull/3"};
+               3:"https://github.com/jwlai-cloud/fiction-retail-dbt/pull/3",
+               5:"https://github.com/jwlai-cloud/fiction-retail-dbt/pull/5"};
   const report = document.getElementById("report");
   const liveLink = document.getElementById("live-link");
   async function show(n) {

@@ -1,56 +1,73 @@
 <!-- downstream-impact-guardian -->
 
-## 🟠 Downstream Impact Guardian — **HIGH** (score 6)
-> ⚠️ Ran in **offline fixture mode** (no DataHub credentials in this run). Lineage/query data below comes from committed fixtures; on the maintainer's instance this runs live.
+## 🟠 Downstream Impact Guardian — **HIGH** (score 7)
 
-`revenue_daily`: logic change, 2 downstream consumer(s). Suspected semantic drift: `revenue_daily.gross_revenue` is bound to glossary term **Gross Revenue** and its logic changed, but this PR does not update the term — verify the live definition still holds.
+## 🛡️ Downstream Impact Assessment
+
+**Model:** `revenue_daily` — Logic changes (dbt marts layer)  
+**Severity:** HIGH  
+**Total downstream consumers:** 4 entities across 2 platforms
+
+---
+
+### 🔍 Key Findings
+
+I investigated the full downstream graph and confirmed **4 dependent entities**, spanning Looker dashboards and a BigQuery pipeline:
+
+| Consumer | Platform | Owner | Risk |
+|----------|----------|-------|------|
+| **Finance KPIs** | Looker | `finance-bi@fiction-retail.example` | ⚠️ Dashboard metrics will be distorted |
+| **Monthly Board Pack** | Looker | **UNOWNED** | 🔴 Untracked board report — highest business risk |
+| **exec_daily_digest** | BigQuery | `finance-ops@fiction-retail.example` | ⚠️ Depends on `order_date`; if date logic shifts, daily aggregates break |
+| *Sibling table* | BigQuery | Data team | Low direct risk |
+
+**Notable concerns:**
+
+1. **Unowned board dashboard.** The "Monthly Board Pack" has no declared owner. If the new logic changes how `gross_revenue` or `order_count` is computed, board-level reporting goes silent without any team being notified. This is a governance gap your PR would expose.
+
+2. **Column-specific dependency.** `exec_daily_digest` declares a dependency on `order_date` only. If your logic change renames, modifies, or removes `order_date`, this pipeline fails immediately. If it only alters calculation columns (`gross_revenue`, `avg_order_value`), the digest may silently ingest stale/incorrect totals.
+
+3. **No glossary drift detected.** The "Gross Revenue" glossary term remains aligned — good. But confirm the new logic still matches that definition before merging.
+
+4. **0 manual queries captured.** The system shows no recorded SQL queries referencing `revenue_daily` directly, which means the full set of downstream consumers may not be fully discoverable via query analysis alone. Relying on lineage is correct here.
+
+---
+
+### ✅ Recommended Actions
+
+- [ ] **Assign an owner to the Monthly Board Pack** — either add a technical owner now or flag it as a P1 governance task. Unowned board reports are single points of failure.
+- [ ] **Verify `order_date` stability** — ensure the date column semantics haven't changed. If the column definition shifted, coordinate with `finance-ops@fiction-retail.example` before merge.
+- [ ] **Validate logic against "Gross Revenue" definition** — run the new `revenue_daily` materialization in a dev environment and spot-check a sample day's `gross_revenue` against source data to confirm the glossary-aligned definition holds.
+
+_Narrative by `openai/qwen3.6-flash` via Google ADK + DataHub Agent Context Kit._
 
 ### What changed
 
 | Model | Change | Details |
 |---|---|---|
-| `revenue_daily` | logic | SQL logic modified |
+| `revenue_daily` | logic | SQL logic modified (filters/joins/shape) |
 
-### Blast radius (from DataHub lineage — live systems, not this repo)
+### Blast radius & who to inform (from DataHub lineage + ownership — live systems, not this repo)
 
-| Downstream consumer | Platform | Type | Hops |
-|---|---|---|---|
-| Finance KPIs | looker | dashboard | 1 |
-| Monthly Board Pack | looker | dashboard | 1 |
+| Downstream consumer | Platform | Type | Worst-case impact | Stakeholders to inform |
+|---|---|---|---|---|
+| Finance KPIs | looker | dashboard | 🟠 DISTORTED | finance-bi@fiction-retail.example |
+| exec_daily_digest | bigquery | dataset | 🟠 DISTORTED | finance-ops@fiction-retail.example |
+| Monthly Board Pack | looker | dashboard | 🟠 DISTORTED | ⚠️ **unowned** — assign an owner in DataHub |
+
+> Impact is the honest upper bound from the upstream change kind — except 🟢 SAFE rows, which are FACTS: those consumers declared the columns they read (`depends_on_columns` in their own dbt meta) and none were touched. Declare yours to earn the same verdict; column-level lineage will refine the rest.
 
 ### Semantic drift (DataHub glossary)
 
 **Gross Revenue** — ⚠️ suspected
 - `revenue_daily.gross_revenue` is bound to this term and its logic changed, but this PR does not update the term's definition.
 - DataHub (current business meaning): Sum of order_total over all non-cancelled orders in the period, refunds included. Refunds are netted out downstream in net revenue, never here.
+
 - Verify the definition still holds — or update the glossary in this PR.
 
 ### Writeback 1 — Data Contracts in DataHub
 
-ℹ️ **`revenue_daily`** — No DataHub credentials in this run; the exact contract payload the agent would submit is recorded below.
-
-<details><summary>Contract payload for `revenue_daily`</summary>
-
-```json
-{
-  "entityUrn": "urn:li:dataset:(urn:li:dataPlatform:bigquery,agent-era.fiction_retail.revenue_daily,PROD)",
-  "schema": [
-    {
-      "assertionUrn": "urn:li:assertion:revenue_daily.unique_order_date"
-    },
-    {
-      "assertionUrn": "urn:li:assertion:revenue_daily.not_null_order_date"
-    }
-  ],
-  "provenance": {
-    "status": "PROPOSED",
-    "proposedBy": "downstream-impact-guardian",
-    "sourcePullRequest": "https://github.com/jwlai-cloud/fiction-retail-dbt/pull/3"
-  }
-}
-```
-</details>
-
+✅ **`revenue_daily`** — contract `urn:li:dataContract:eaf95bfa-9c31-416b-ba29-f3e1fdf76a24` written (upserted), status **PROPOSED** — approving it = merging this PR after adopting the compatibility code.
 
 ### Writeback 2 — generated compatibility code (mergeable)
 

@@ -1,31 +1,53 @@
 <!-- downstream-impact-guardian -->
 
-## 🔴 Downstream Impact Guardian — **CRITICAL** (score 22)
-> ⚠️ Ran in **offline fixture mode** (no DataHub credentials in this run). Lineage/query data below comes from committed fixtures; on the maintainer's instance this runs live.
+## 🔴 Downstream Impact Guardian — **CRITICAL** (score 24)
 
-`revenue_daily`: logic change, 2 downstream consumer(s). `fct_orders`: logic + schema change, 3 downstream consumer(s), renames `order_total`→`order_amount_usd`; 2 observed production query/queries still reference the old column(s) — guaranteed breakage. Semantic drift on glossary term **Gross Revenue**: the PR's definition no longer matches what DataHub says the business currently means by it.
+**Impact Narrative:**
+
+Your PR makes two breaking moves: renaming `order_total` to `order_amount_usd` in `fct_orders`, and redefining "Gross Revenue" semantics (now excludes refunds and limits to fulfilled orders only). This immediately breaks the Finance KPIs dashboard (Looker), the `customer_ltv` model used by marketing-analytics, and the `open_orders_snapshot` dataset for ops-eng — all directly consuming `fct_orders`. Additionally, the downstream `revenue_daily` model depends on `fct_orders`, causing a cascade that breaks `exec_daily_digest` (finance-ops) and the Monthly Board Pack (Looker). The glossary drift is equally significant: Gross Revenue will suddenly exclude refunds entirely, potentially shocking finance stakeholders who report based on the previous definition. Six consumers across three teams are impacted; none have been notified yet.
+
+**ACTIONS:**
+- **Renaming:** Add backward-compatible views or CTE aliases so `order_total` still resolves for legacy queries while you migrate consumers to `order_amount_usd`
+- **Glossary sync:** Engage the Finance team and data governance owner to approve the semantic shift from "all non-cancelled" to "fulfilled-only, no refunds" before merging
+- **Consumer outreach:** Notify finance-bi, marketing-analytics, and ops-eng owners directly with migration timelines for their dashboards/models
+
+_Narrative by `openai/qwen3.6-flash` via Google ADK + DataHub Agent Context Kit._
 
 ### What changed
 
 | Model | Change | Details |
 |---|---|---|
-| `revenue_daily` | logic | SQL logic modified |
-| `fct_orders` | logic + schema | `order_total` → `order_amount_usd`; SQL logic modified |
+| `revenue_daily` | logic | logic changed in: `avg_order_value`, `gross_revenue` |
+| `fct_orders` | logic + schema | `order_total` → `order_amount_usd`; SQL logic modified (filters/joins/shape) |
 
-### Blast radius (from DataHub lineage — live systems, not this repo)
+### Blast radius & who to inform (from DataHub lineage + ownership — live systems, not this repo)
 
-| Downstream consumer | Platform | Type | Hops |
-|---|---|---|---|
-| Finance KPIs | looker | dashboard | 1 |
-| Monthly Board Pack | looker | dashboard | 1 |
-| revenue_daily | bigquery | dataset | 1 |
-| marketing.customer_ltv | bigquery | dataset | 1 |
+| Downstream consumer | Platform | Type | Worst-case impact | Stakeholders to inform |
+|---|---|---|---|---|
+| Finance KPIs | looker | dashboard | 🔴 BROKEN | finance-bi@fiction-retail.example |
+| exec_daily_digest | bigquery | dataset | 🔴 BROKEN | finance-ops@fiction-retail.example |
+| Monthly Board Pack | looker | dashboard | 🔴 BROKEN | ⚠️ **unowned** — assign an owner in DataHub |
+| customer_ltv | bigquery | dataset | 🔴 BROKEN | marketing-analytics@fiction-retail.example |
+| open_orders_snapshot | bigquery | dataset | 🟠 DISTORTED | ops-eng@fiction-retail.example |
+| revenue_daily | dbt | dataset | 🔴 BROKEN | ⚠️ **unowned** — assign an owner in DataHub |
+
+> Impact is the honest upper bound from the upstream change kind — except 🟢 SAFE rows, which are FACTS: those consumers declared the columns they read (`depends_on_columns` in their own dbt meta) and none were touched. Declare yours to earn the same verdict; column-level lineage will refine the rest.
+
+### Column-level effects (evidence held today)
+
+| Column | What happened | Observed evidence |
+|---|---|---|
+| `revenue_daily.avg_order_value` | expression changed | — |
+| `revenue_daily.gross_revenue` | expression changed | 1 observed query reference it |
+| `fct_orders.order_total` | renamed → `order_amount_usd` | 2 observed queries reference it |
+
+> Which downstream consumers read each column needs column-level lineage — roadmap. Everything above is direct evidence, not inference.
 
 ### Queries that WILL break
 
 These are real queries DataHub has observed against the old columns:
 
-**on `fct_orders`** — finance-scheduled-queries@agent-era.iam (bigquery scheduled query):
+**on `fct_orders`** (SYSTEM):
 ```sql
 SELECT order_date, SUM(order_total) AS revenue
 FROM `agent-era.fiction_retail.fct_orders`
@@ -33,7 +55,7 @@ WHERE order_status = 'completed'
 GROUP BY order_date
 ```
 
-**on `fct_orders`** — analyst@example.com (bigquery console):
+**on `fct_orders`** (SYSTEM):
 ```sql
 SELECT customer_id, AVG(order_total) AS aov
 FROM `agent-era.fiction_retail.fct_orders`
@@ -48,54 +70,8 @@ GROUP BY customer_id
 
 ### Writeback 1 — Data Contracts in DataHub
 
-ℹ️ **`revenue_daily`** — No DataHub credentials in this run; the exact contract payload the agent would submit is recorded below.
-
-<details><summary>Contract payload for `revenue_daily`</summary>
-
-```json
-{
-  "entityUrn": "urn:li:dataset:(urn:li:dataPlatform:bigquery,agent-era.fiction_retail.revenue_daily,PROD)",
-  "schema": [
-    {
-      "assertionUrn": "urn:li:assertion:revenue_daily.unique_order_date"
-    },
-    {
-      "assertionUrn": "urn:li:assertion:revenue_daily.not_null_order_date"
-    }
-  ],
-  "provenance": {
-    "status": "PROPOSED",
-    "proposedBy": "downstream-impact-guardian",
-    "sourcePullRequest": "https://github.com/jwlai-cloud/fiction-retail-dbt/pull/1"
-  }
-}
-```
-</details>
-
-ℹ️ **`fct_orders`** — No DataHub credentials in this run; the exact contract payload the agent would submit is recorded below.
-
-<details><summary>Contract payload for `fct_orders`</summary>
-
-```json
-{
-  "entityUrn": "urn:li:dataset:(urn:li:dataPlatform:bigquery,agent-era.fiction_retail.fct_orders,PROD)",
-  "schema": [
-    {
-      "assertionUrn": "urn:li:assertion:fct_orders.unique_order_id"
-    },
-    {
-      "assertionUrn": "urn:li:assertion:fct_orders.not_null_order_id"
-    }
-  ],
-  "provenance": {
-    "status": "PROPOSED",
-    "proposedBy": "downstream-impact-guardian",
-    "sourcePullRequest": "https://github.com/jwlai-cloud/fiction-retail-dbt/pull/1"
-  }
-}
-```
-</details>
-
+✅ **`revenue_daily`** — contract `urn:li:dataContract:eaf95bfa-9c31-416b-ba29-f3e1fdf76a24` written (upserted), status **PROPOSED** — approving it = merging this PR after adopting the compatibility code.
+✅ **`fct_orders`** — contract `urn:li:dataContract:75ac3dd7-5923-4747-8454-2db660c89206` written (upserted), status **PROPOSED** — approving it = merging this PR after adopting the compatibility code.
 
 ### Writeback 2 — generated compatibility code (mergeable)
 
@@ -162,9 +138,8 @@ version: 2
 models:
   - name: revenue_daily_legacy
     description: >
-      Pre-PR logic of revenue_daily, preserved verbatim by
-      Downstream Impact Guardian for consumers pinned to the old
-      metric definition.
+      Pre-PR definition of revenue_daily, preserved verbatim
+      by Downstream Impact Guardian — consumers pinned to the old metric definition keep a working ref.
 ```
 
 Drop these files into `models/compat/`, run `dbt build --select fct_orders_compat revenue_daily_legacy`, and downstream consumers keep working while they migrate.
