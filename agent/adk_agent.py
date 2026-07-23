@@ -170,6 +170,9 @@ def enrich_narrative(report: ImpactReport, reader, api_key: str) -> None:
             report.narrative = text
             report.narrative_source = model
     except Exception as exc:
+        # Label the failure distinctly — "configured but failed" must never
+        # render as "not configured" in the comment.
+        report.narrative_source = f"failed:{model}"
         print(f"::error title=Guardian narrative LLM failed::{model}: "
               f"{type(exc).__name__} — check the provider key secret and "
               "base URL; report falls back to the labeled template narrative.")
