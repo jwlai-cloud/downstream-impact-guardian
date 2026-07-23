@@ -150,10 +150,14 @@ Two invariants make it trustworthy rather than magical:
   - **Ingestion** (dbt + business-glossary sources) seeds the demo
     reality: dbt tests become assertions backing the contract; glossary
     versions are the semantic-drift baseline.
-- **Narrative:** Google ADK `Agent` on Gemini, first-party DataHub
-  tools. Offline (fork PRs get no secrets) the agent degrades to a
-  deterministic renderer against committed fixtures — the full comment
-  still renders and lands in `$GITHUB_STEP_SUMMARY`.
+- **Narrative:** Google ADK `Agent`, first-party DataHub tools,
+  **provider-agnostic by repo configuration**: `gemini-*` runs ADK-native;
+  any other id routes through LiteLLM against an OpenAI-compatible
+  endpoint (our demo runs Qwen `qwen3.6-flash` via DashScope,
+  ≈ $0.0006/run — see README "Choosing the narrative LLM"). Offline, or
+  with no key at all, the agent degrades to a deterministic renderer —
+  the full comment still renders and lands in `$GITHUB_STEP_SUMMARY`;
+  the LLM never scores either way.
 - **Demo world:** a fiction-retail dbt project (seeds → staging →
   `fct_orders` → `revenue_daily`) on BigQuery, with a formal business
   glossary attached via dbt `meta`.
@@ -345,9 +349,9 @@ S = static diagram.
 | 8 | 1:30–1:45 | A | Semantic drift + generated compat view | "And it doesn't just warn — it writes the fix. A compat view, mergeable as-is." | zoom on `order_amount_usd as order_total` |
 | 9 | 1:45–2:00 | C | DataHub lineage graph → contract entity (PENDING + provenance) | "Writeback two: a Data Contract, proposed into the catalog — the next team inherits the knowledge." | raw UI nav @1×, speed-ramp 2× between screens |
 | 10 | 2:00–2:25 | S/D | Architecture diagram, then Pinterest edge beats | Edge segment VO (appendix above) — end on the scale line: "The demo is four models and mocked dashboards — honestly labeled. Production is thousands of models across repos no single team can see. That's why the judgment comes from the catalog, not the codebase." | text-overlay beats: `Pinterest ✓` → `no lineage · structure only` → `missing half = DataHub` → `4 models here · 4,000 in prod · same agent` |
-| 11 | 2:25–2:33 | T | `pytest -q` → `26 passed in 0.2s` | "Deterministic core — the LLM narrates, it never scores and never writes the merged code." | big number overlay: **26 tests · 0.2 s** |
+| 11 | 2:25–2:33 | T | `pytest -q` → `44 passed in 0.3s` | "Deterministic core — the LLM narrates, it never scores and never writes the merged code." | big number overlay: **44 tests · 0.3 s** |
 | 12 | 2:33–2:43 | S | Adoption `uses:` block | "One block in any dbt repo. The runner is the bot." | code overlay, typewriter reveal |
 | 13 | 2:43–2:50 | S | Repo URL + "open the demo PR yourself" | "Downstream Impact Guardian. The PR looks fine. DataHub knows better." | hold ≥5 s, readable |
 
 Post checklist: sound-off watchability pass; every number matches this doc
-(26 tests, CRITICAL 22, 48 s run); total runtime under the platform limit.
+(44 tests, CRITICAL 23, 48 s run); total runtime under the platform limit.

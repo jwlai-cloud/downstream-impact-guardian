@@ -103,3 +103,30 @@ depends_on_columns meta; tolerant custom-property parser; fixtures demo
 BROKEN-as-fact and SAFE). Blog drafted: docs/blog/2026-07-23 (design
 story in engineer voice). Artifacts refreshed. Remaining unchanged:
 PAT+Vercel, Oracle retry, model keys + workflow wiring, filming.
+
+## Session log (2026-07-23, night — live mode day)
+
+Shipped and merged: deployment menu (DEPLOY_OPTIONS.md — AWS demoted,
+Hetzner ~$16 recommended, organizer confirmed live URL not required),
+GitHub Pages judge workbench (LIVE:
+jwlai-cloud.github.io/downstream-impact-guardian — zero-credential
+60-second route, ForgetOps-recon takeaway), Vercel button demo (LIVE:
+downstream-impact-guardian.vercel.app — verified end-to-end, third
+drift scenario added), captures/ gitignore, lineage skipCache fix +
+scripts/seed_demo_consumers.py (#20).
+
+Live mode achieved via user-run localtunnel to local quickstart: all
+demo PRs now report WITHOUT the offline banner. Catalog seeded with the
+mocked consumer layer (resolves the fixtures-vs-live open question);
+found+fixed a real bug in the process (GMS searchAcrossLineage cache
+made a freshly-seeded consumer invisible → skipCache). New standing
+scenario 4 (fiction-retail-dbt #5): pure expression tweak → 🟢 SAFE
+(declared) row live on camera. Narrative provider wiring: repo
+variables GUARDIAN_NARRATIVE_MODEL/OPENAI_BASE_URL set (Qwen flash),
+consumer PR #6 passes them through (awaiting merge).
+
+Capture rig (Playwright) built: 24 stills incl. highlighted judge
+variants, DataHub lineage/glossary/schema, workbench, button page. VO
+script v3 (13 beats, 2:54): pain-point opening, sqlglot/YAML/ACK named,
+advisory-not-blocking + Slack beat. Awaiting: .env with TTS key,
+consumer PR #6 merge, then TTS + motion + assembly.
