@@ -92,3 +92,14 @@ applied across all hackathon repos.
 Still user-blocked: PAT + Vercel import (button demo go-live), Oracle
 credit-card retry (judge instance; Cloud trials verified sales-gated),
 OpenAI/Qwen key as repo secret (narrative live), then filming.
+
+## Session log (2026-07-23)
+
+Merged #10–#13 (expression attribution, narrative model providers, docs,
+stakeholder protocol incl. 8-finding CodeRabbit round with one real
+aggregation bug). PR #14 open: declared column dependencies — the SAFE
+verdict (fact-based per-consumer impact from consumers' own
+depends_on_columns meta; tolerant custom-property parser; fixtures demo
+BROKEN-as-fact and SAFE). Blog drafted: docs/blog/2026-07-23 (design
+story in engineer voice). Artifacts refreshed. Remaining unchanged:
+PAT+Vercel, Oracle retry, model keys + workflow wiring, filming.

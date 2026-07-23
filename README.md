@@ -109,6 +109,7 @@ detection (dbt manifest diff + glossary drift) → blast radius (DataHub
 lineage + observed queries) → Data Contract writeback (PROPOSED) →
 deterministic compat codegen → idempotent PR comment. See
 `docs/ARCHITECTURE.md` for the system shape, `docs/adr/` for decisions,
+[the design blog](docs/blog/2026-07-23-designing-honest-blast-radius.md) for the full story,
 `docs/SPEC.md` for design history, `docs/PROGRESS.md` for current state,
 and `CLAUDE.md` for working context. The live path (lineage, glossary
 drift, `upsertDataContract`) is verified against a real self-hosted OSS
