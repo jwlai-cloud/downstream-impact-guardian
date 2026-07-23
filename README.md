@@ -82,8 +82,9 @@ workflow is the reference integration.
 
 ### Choosing the narrative LLM (optional — any provider, or none)
 
-The guardian makes a **real LLM call on every live run** to write the
-impact narrative — configure a key for the provider of your choice.
+The guardian makes a **real LLM call on every configured live run** to
+write the impact narrative — configure a key for the provider of your
+choice.
 Severity, blast radius, contracts and codegen never involve the LLM
 (deterministic, unit-tested). Provider selection is repo configuration,
 never code:
@@ -96,8 +97,10 @@ never code:
 | `OPENAI_BASE_URL` | variable | — | omit (default) | `https://dashscope-intl.aliyuncs.com/compatible-mode/v1` |
 
 `gemini-*` ids run on ADK's native Gemini path; anything else is routed
-through LiteLLM against the given OpenAI-compatible endpoint. Qwen
-`qwen3.6-flash` costs ≈ $0.0006 per guardian run.
+through LiteLLM against the given OpenAI-compatible endpoint. Cost
+scales with tokens: a typical guardian run (~2k input + ~600 output
+tokens) lands around $0.0006 on Qwen `qwen3.6-flash` international
+list pricing — check your provider's current per-token rates.
 
 Failure semantics are explicit, never silent:
 - **model configured, key missing → the check fails** with an error that

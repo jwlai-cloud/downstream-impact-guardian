@@ -45,6 +45,19 @@ def run(args) -> int:
     reader = make_reader(config)
     print(f"[guardian] mode={config.mode}")
 
+    # Narrative LLM config check — live mode only (offline fixture mode is
+    # first-class, ADR-0007: fork PRs see repo VARIABLES but no secrets, so
+    # a configured model with a missing key is normal there, not an error).
+    # Runs before any early return: a misconfiguration should surface even
+    # on a PR with no impactful changes.
+    if config.mode == "live":
+        from agent.adk_agent import validate_narrative_config
+        config_error = validate_narrative_config(config.google_api_key)
+        if config_error:
+            print("::error title=Guardian narrative misconfigured::"
+                  f"{config_error}")
+            return 2
+
     # 1+2. Detect schema/logic changes (dbt state) and semantic drift.
     prod = dbt_state.load_manifest(args.prod_manifest)
     pr = dbt_state.load_manifest(args.pr_manifest)
@@ -68,14 +81,10 @@ def run(args) -> int:
                                  consumers, queries, suspected)
     print(f"[guardian] severity={report.severity} score={report.score}")
 
-    # Narrative LLM: misconfiguration fails loudly; configured+keyed runs
-    # the model; nothing configured keeps the labeled template narrative.
+    # Narrative LLM (config validated above): configured+keyed runs the
+    # model; nothing configured keeps the labeled template narrative.
     import os as _os
-    from agent.adk_agent import enrich_narrative, validate_narrative_config
-    config_error = validate_narrative_config(config.google_api_key)
-    if config_error:
-        print(f"::error title=Guardian narrative misconfigured::{config_error}")
-        return 2
+    from agent.adk_agent import enrich_narrative
     if config.mode == "live" and (config.google_api_key
                                   or _os.environ.get("OPENAI_API_KEY")):
         enrich_narrative(report, reader, config.google_api_key)

@@ -125,6 +125,13 @@ def validate_narrative_config(google_api_key: str) -> str | None:
     import os
     model = (os.environ.get("GUARDIAN_NARRATIVE_MODEL") or "").strip()
     if not model:
+        if os.environ.get("OPENAI_API_KEY") and not google_api_key:
+            return ("OPENAI_API_KEY is set but GUARDIAN_NARRATIVE_MODEL is "
+                    "empty — the default model is Gemini, which this key "
+                    "cannot serve. Set the GUARDIAN_NARRATIVE_MODEL repo "
+                    "variable to your provider's model id (e.g. "
+                    "openai/qwen3.6-flash) and pass it via the action's "
+                    "narrative-model input.")
         return None
     if model.startswith("gemini"):
         if not google_api_key:

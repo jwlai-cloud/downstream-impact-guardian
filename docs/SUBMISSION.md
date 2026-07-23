@@ -154,8 +154,9 @@ Two invariants make it trustworthy rather than magical:
   **provider-agnostic by repo configuration**: `gemini-*` runs ADK-native;
   any other id routes through LiteLLM against an OpenAI-compatible
   endpoint. Our demo makes a **real Qwen call per run**
-  (`qwen3.6-flash` via DashScope, ≈ $0.0006/run — see README "Choosing
-  the narrative LLM"), and the comment attributes the narrative to the
+  (`qwen3.6-flash` via DashScope — ≈ $0.0006 at a typical ~2k-in/600-out
+  token run on international list pricing; see README "Choosing the
+  narrative LLM"), and the comment attributes the narrative to the
   model that wrote it. A configured-but-keyless setup fails the check
   with the exact secret to add; only keyless forks fall back to a
   template summary, labeled as such. The LLM never scores either way.

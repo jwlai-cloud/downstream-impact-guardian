@@ -193,3 +193,13 @@ def test_validate_narrative_config(monkeypatch):
     assert "OPENAI_API_KEY" in v("")
     monkeypatch.setenv("OPENAI_API_KEY", "k")
     assert v("") is None
+
+
+def test_validate_narrative_config_openai_key_without_model(monkeypatch):
+    from agent.adk_agent import validate_narrative_config as v
+    monkeypatch.delenv("GUARDIAN_NARRATIVE_MODEL", raising=False)
+    monkeypatch.setenv("OPENAI_API_KEY", "k")
+    # OpenAI key alone would silently target the Gemini default -> error
+    assert "GUARDIAN_NARRATIVE_MODEL" in v("")
+    # ...unless a Google key exists for the Gemini default
+    assert v("google-key") is None
