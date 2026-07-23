@@ -2,14 +2,27 @@
 
 ## 🔴 Downstream Impact Guardian — **CRITICAL** (score 24)
 
-**Impact Narrative:**
+## Impact Narrative
 
-Your PR makes two breaking moves: renaming `order_total` to `order_amount_usd` in `fct_orders`, and redefining "Gross Revenue" semantics (now excludes refunds and limits to fulfilled orders only). This immediately breaks the Finance KPIs dashboard (Looker), the `customer_ltv` model used by marketing-analytics, and the `open_orders_snapshot` dataset for ops-eng — all directly consuming `fct_orders`. Additionally, the downstream `revenue_daily` model depends on `fct_orders`, causing a cascade that breaks `exec_daily_digest` (finance-ops) and the Monthly Board Pack (Looker). The glossary drift is equally significant: Gross Revenue will suddenly exclude refunds entirely, potentially shocking finance stakeholders who report based on the previous definition. Six consumers across three teams are impacted; none have been notified yet.
+This PR is **CRITICAL** and cannot be merged as-is. Two interlocking breaking changes will cascade through your analytics pipeline:
 
-**ACTIONS:**
-- **Renaming:** Add backward-compatible views or CTE aliases so `order_total` still resolves for legacy queries while you migrate consumers to `order_amount_usd`
-- **Glossary sync:** Engage the Finance team and data governance owner to approve the semantic shift from "all non-cancelled" to "fulfilled-only, no refunds" before merging
-- **Consumer outreach:** Notify finance-bi, marketing-analytics, and ops-eng owners directly with migration timelines for their dashboards/models
+**Schema break:** Renaming `fct_orders.order_total` → `order_amount_usd` immediately crashes `revenue_daily`, which still references `sum(order_total)` in its SQL. This ripples to every consumer of `revenue_daily`.
+
+**Broken consumers:** At least five assets are already impacted:
+- **Finance KPIs** (Looker) — the primary board finance dashboard, owned by finance-bi@fiction-retail.example, will fail.
+- **customer_ltv** (BigQuery, marketing-analytics) explicitly depends on `fct_orders.order_total`; its LTV calculations will break entirely.
+- **exec_daily_digest** and **Monthly Board Pack** — two more Finance-owned assets at hop 2/3 will also fail.
+- **open_orders_snapshot** (ops-eng) will see distorted data due to the logic shift.
+
+**Glossary conflict:** The proposed "Gross Revenue" definition changes the *meaning* of the metric (from all non-cancelled orders to only fulfilled/completed/shipped orders). This semantic shift conflicts with `revenue_daily.gross_revenue`, which semantically encodes "all non-cancelled orders." Aligning this without a coordinated multi-model rewrite will create financial misreporting.
+
+---
+
+## ACTIONS:
+
+1. **Rename the column everywhere first** — update `revenue_daily.sql` to reference `order_amount_usd` instead of `order_total` before merging. Without this, your own model fails to compile.
+2. **Align the glossary definition or rename the metric** — either revert the "Gross Revenue" definition change, OR introduce a new model/metric (e.g., `fulfilled_revenue_daily`) so finance doesn't suddenly get a different definition applied to existing dashboards and reports.
+3. **Notify downstream teams proactively** — email finance-bi@fiction-retail.example, marketing-analytics@fiction-retail.example, and ops-eng@fiction-retail.example about the required view/dashboard/model updates on their side, particularly for `customer_ltv` and the Finance KPIs dashboard.
 
 _Narrative by `openai/qwen3.6-flash` via Google ADK + DataHub Agent Context Kit._
 

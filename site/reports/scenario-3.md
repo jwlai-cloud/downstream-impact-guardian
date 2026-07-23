@@ -2,42 +2,7 @@
 
 ## 🟠 Downstream Impact Guardian — **HIGH** (score 7)
 
-## 🛡️ Downstream Impact Assessment
-
-**Model:** `revenue_daily` — Logic changes (dbt marts layer)  
-**Severity:** HIGH  
-**Total downstream consumers:** 4 entities across 2 platforms
-
----
-
-### 🔍 Key Findings
-
-I investigated the full downstream graph and confirmed **4 dependent entities**, spanning Looker dashboards and a BigQuery pipeline:
-
-| Consumer | Platform | Owner | Risk |
-|----------|----------|-------|------|
-| **Finance KPIs** | Looker | `finance-bi@fiction-retail.example` | ⚠️ Dashboard metrics will be distorted |
-| **Monthly Board Pack** | Looker | **UNOWNED** | 🔴 Untracked board report — highest business risk |
-| **exec_daily_digest** | BigQuery | `finance-ops@fiction-retail.example` | ⚠️ Depends on `order_date`; if date logic shifts, daily aggregates break |
-| *Sibling table* | BigQuery | Data team | Low direct risk |
-
-**Notable concerns:**
-
-1. **Unowned board dashboard.** The "Monthly Board Pack" has no declared owner. If the new logic changes how `gross_revenue` or `order_count` is computed, board-level reporting goes silent without any team being notified. This is a governance gap your PR would expose.
-
-2. **Column-specific dependency.** `exec_daily_digest` declares a dependency on `order_date` only. If your logic change renames, modifies, or removes `order_date`, this pipeline fails immediately. If it only alters calculation columns (`gross_revenue`, `avg_order_value`), the digest may silently ingest stale/incorrect totals.
-
-3. **No glossary drift detected.** The "Gross Revenue" glossary term remains aligned — good. But confirm the new logic still matches that definition before merging.
-
-4. **0 manual queries captured.** The system shows no recorded SQL queries referencing `revenue_daily` directly, which means the full set of downstream consumers may not be fully discoverable via query analysis alone. Relying on lineage is correct here.
-
----
-
-### ✅ Recommended Actions
-
-- [ ] **Assign an owner to the Monthly Board Pack** — either add a technical owner now or flag it as a P1 governance task. Unowned board reports are single points of failure.
-- [ ] **Verify `order_date` stability** — ensure the date column semantics haven't changed. If the column definition shifted, coordinate with `finance-ops@fiction-retail.example` before merge.
-- [ ] **Validate logic against "Gross Revenue" definition** — run the new `revenue_daily` materialization in a dev environment and spot-check a sample day's `gross_revenue` against source data to confirm the glossary-aligned definition holds.
+Logic changes in `revenue_daily` will propagate distorted daily revenue figures downstream—no schema is breaking, but the numbers are shifting. The **exec_daily_digest** BigQuery report (owned by finance-ops@) reads `order_date` from this model, so its daily digest likely distorts if the logic alters date-grouping behavior. On BI, both the **Finance KPIs** dashboard (Looker, owned by finance-bi@) and the **Monthly Board Pack** (Looker, unowned) pull directly from this model; expect misaligned KPI values and potentially flagged anomalies on their dashboards. Because there are no column renames or deletions, pipelines won't crash, but any downstream aggregation or threshold alerting tied to historical revenue levels will produce incorrect outputs. Coordinate with finance-bi@ and finance-ops@ before merging, and plan a regression validation against yesterday's revenue figures. Consider re-running affected dashboards manually to confirm expected deltas.
 
 _Narrative by `openai/qwen3.6-flash` via Google ADK + DataHub Agent Context Kit._
 
@@ -60,7 +25,7 @@ _Narrative by `openai/qwen3.6-flash` via Google ADK + DataHub Agent Context Kit.
 ### Semantic drift (DataHub glossary)
 
 **Gross Revenue** — ⚠️ suspected
-- `revenue_daily.gross_revenue` is bound to this term and its logic changed, but this PR does not update the term's definition.
+- `revenue_daily.gross_revenue` is bound to this term and the model's logic changed, but this PR does not update the term's definition.
 - DataHub (current business meaning): Sum of order_total over all non-cancelled orders in the period, refunds included. Refunds are netted out downstream in net revenue, never here.
 
 - Verify the definition still holds — or update the glossary in this PR.

@@ -2,19 +2,11 @@
 
 ## 🟠 Downstream Impact Guardian — **HIGH** (score 7)
 
-## Downstream Impact Guardian Report
+The downstream impact review confirms three findings: two Looker dashboards show **DISTORTED** impact from the `revenue_daily` logic change, one of which (**Monthly Board Pack**) has absolutely no assigned owner. Meanwhile `exec_daily_digest` remains SAFE because it only consumes the `order_date` column, which your change does not touch.
 
-### Impact Narrative
+Here's the reality check: even though the change is marked non-breaking at the schema level, both dashboards embed business logic (aggregations, filters, or metric definitions) over revenue_daily's full result set. If the logic change alters how revenue is computed—e.g., inclusion/exclusion criteria, rounding, null handling—the KPI numbers those executives see will shift silently. The danger with the **Monthly Board Pack** is compounded by the fact that it has no owner; there's nobody in DataHub who would get alerted if dashboards start showing anomalous numbers.
 
-The `revenue_daily` dbt model has a **logic change** — meaning calculation formulas were modified, not just column shapes. Even though no columns were renamed or dropped, two Looker dashboards will silently serve distorted revenue numbers post-deploy: **"Finance KPIs"** (owned by `finance-bi@fiction-retail.example`) and the unowned **"Monthly Board Pack"**, both directly consuming `revenue_daily`. Revenue distortion propagates to any analyst, VP, or board member who reads those dashboards — you could be publishing incorrect daily revenue totals tomorrow morning. The third downstream (`exec_daily_digest`) is safe because it only reads `order_date`, which was unaffected.
-
----
-
-### ACTIONS:
-
-* **Notify `finance-bi@fiction-retail.example` immediately** before merge so they can prepare for potentially shifted KPIs; flag the Monthly Board Pack owners that it currently has none.
-* **Walk through the exact SQL diff** line-by-line against the agreed revenue definition — confirm whether the new logic matches finance's expectations or introduces bugs.
-* **Add a pre-release run or test** validating key metric outputs (e.g., compare today's `SELECT SUM(amount)` before vs after) to catch unintentional shifts early.
+The PR author should verify whether their logic change intentionally modifies the *output* semantics (not just the SQL structure) and consider adding explicit unit tests for consumer-facing aggregations before merging.
 
 _Narrative by `openai/qwen3.6-flash` via Google ADK + DataHub Agent Context Kit._
 
@@ -45,7 +37,7 @@ _Narrative by `openai/qwen3.6-flash` via Google ADK + DataHub Agent Context Kit.
 ### Semantic drift (DataHub glossary)
 
 **Gross Revenue** — ⚠️ suspected
-- `revenue_daily.gross_revenue` is bound to this term and its logic changed, but this PR does not update the term's definition.
+- `revenue_daily.gross_revenue` is bound to this term and the model's logic changed, but this PR does not update the term's definition.
 - DataHub (current business meaning): Sum of order_total over all non-cancelled orders in the period, refunds included. Refunds are netted out downstream in net revenue, never here.
 
 - Verify the definition still holds — or update the glossary in this PR.
