@@ -2,12 +2,15 @@
 
 ## 🔴 Downstream Impact Guardian — **CRITICAL** (score 11)
 
-A complete removal of the `revenue_daily` dbt model triggers immediate breakage across three critical downstream assets owned by Finance and Ops. The `exec_daily_digest` BigQuery pipeline—which depends on `order_date` from this table—will fail its next execution, halting daily executive summaries. Simultaneously, two Looker dashboards ("Finance KPIs" and "Monthly Board Pack") will render empty or error out, disrupting financial tracking and board reporting. Because this is a full model deletion rather than a schema tweak, there's no graceful degradation; every downstream query referencing `revenue_daily` produces runtime errors. Glossary consistency helps maintain definitions, but cannot prevent the data outages. Until consumers are migrated to a replacement source, the data fabric linking raw transactions to leadership visibility is severed.
+## Impact Narrative
 
-ACTIONS:
-- HOLD the PR—the total removal of `revenue_daily` will cascade into hard failures for finance dashboards and automated digest jobs within hours.
-- MIGRATE dependents first: work with the finance-ops and BI teams to point `exec_daily_digest`, "Finance KPIs," and "Monthly Board Pack" to a replacement model before merging this change.
-- DEPRECATE rather than delete: if this model is truly obsolete, implement a deprecation window where downstream consumers are updated incrementally, then remove `revenue_daily` in a follow-up PR.
+Removing `revenue_daily` breaks three first-hop consumers across both BI and analytics layers. Finance is hit hardest: their **Finance KPIs** Looker dashboard and the **Monthly Board Pack** will immediately fail, with no owners currently assigned to the board pack—this is an executive-facing report with no visible owner. Additionally, the **exec_daily_digest** BigQuery dataset depends on the `order_date` column from `revenue_daily`; this dataset will lose its source and cascade failures downstream to any reports querying it. Given revenue data is foundational to monthly planning, expect immediate disruption to daily operational decisions and executive reporting until an alternative is provisioned or the removal is reverted.
+
+## ACTIONS:
+
+- **Communicate early with finance-bi@fiction-retail.example and identify the Monthly Board Pack owner**—both dashboards will break immediately; coordinate a rollback timeline or replacement data source before merging.
+- **Audit exec_daily_digest's downstream consumers**—since this dataset depends on `order_date` from `revenue_daily`, trace its own downstream lineage to quantify cascade damage and notify impacted teams.
+- **Provide a migration plan with replacement metrics**—if removal is intentional, define where the revenue logic moves (e.g., into a new aggregated model) and update all three consumers' dependencies before the PR lands.
 
 _Narrative by `openai/qwen3.6-flash` via Google ADK + DataHub Agent Context Kit._
 
