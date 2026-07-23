@@ -101,16 +101,32 @@ class LiveDataHubClient:
                 {"Authorization": f"Bearer {config.datahub_gms_token}"})
 
     def graphql(self, query: str, variables: dict | None = None) -> dict:
-        resp = self._session.post(
-            f"{self.config.datahub_gms_url}/api/graphql",
-            json={"query": query, "variables": variables or {}},
-            timeout=30,
-        )
-        resp.raise_for_status()
-        body = resp.json()
-        if body.get("errors"):
-            raise RuntimeError(f"DataHub GraphQL errors: {body['errors']}")
-        return body["data"]
+        # Transient gateway blips (502/503/504 from tunnels or proxies, or a
+        # dropped connection) shouldn't fail a whole check — retry briefly.
+        import time
+        last_exc: Exception | None = None
+        for attempt in range(3):
+            if attempt:
+                time.sleep(2 * attempt)
+            try:
+                resp = self._session.post(
+                    f"{self.config.datahub_gms_url}/api/graphql",
+                    json={"query": query, "variables": variables or {}},
+                    timeout=30,
+                )
+            except requests.ConnectionError as exc:
+                last_exc = exc
+                continue
+            if resp.status_code in (502, 503, 504):
+                last_exc = requests.HTTPError(
+                    f"{resp.status_code} from GMS gateway", response=resp)
+                continue
+            resp.raise_for_status()
+            body = resp.json()
+            if body.get("errors"):
+                raise RuntimeError(f"DataHub GraphQL errors: {body['errors']}")
+            return body["data"]
+        raise last_exc  # type: ignore[misc]
 
     def get_dataset_urn(self, model_name: str) -> str | None:
         urn = self.config.dataset_urn(model_name)
