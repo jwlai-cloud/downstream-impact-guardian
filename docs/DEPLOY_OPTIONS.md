@@ -26,7 +26,7 @@ follow its launch notes, then join the shared path above.
 | **Local Mac + Cloudflare Tunnel** | the laptop that already runs it | **$0** | `cloudflared tunnel` exposing 9002 + 8080 — no ports opened, TLS for free | Laptop must stay awake and online the whole window; one sleep = judges see a dead link |
 | **GCE e2-standard-4** (agent-era project) | 4 vCPU / 16 GB x86 | ~$0.13/hr ≈ $67 | Console → Compute Engine, Ubuntu 24.04; firewall rules for 22/9002/8080 | Same price class as AWS — no advantage unless free credits appear |
 | **AWS EC2 t4g.xlarge** | 4 vCPU / 16 GB arm64 | ~$0.13/hr ≈ $65 (credits offset) | `AWS_BRINGUP.md` end-to-end | Only worth it if credits actually cover it |
-| **No live instance** — video + repo as evidence | — | **$0** | Nothing to launch; demo PR reports + offline fixture mode + video carry the proof | Rules explicitly permit this (judges aren't required to test live) — but drops the MCP "interrogate the catalog" judge path and live UI |
+| **No live instance** — video + repo as evidence | — | **$0** | Nothing to launch; demo PR reports + offline fixture mode + Pages judge workbench + video carry the proof | Officially fine — organizer confirmed in Slack (2026-07-13): "live hosted URL isn't required — a public GitHub repo with clear setup instructions works, and judges can evaluate from your demo video too." Drops the MCP "interrogate the catalog" judge path and live UI |
 
 All 16 GB class boxes at the big-3 clouds price out the same (~$60–70
 for 500 hrs) — the real cost lever is the vendor, not the instance
