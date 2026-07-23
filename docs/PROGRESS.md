@@ -32,16 +32,14 @@ Done, in order:
 
 ## Next (priority order)
 
-1. **Judge-facing DataHub instance** — plan A: Oracle Always Free
-   (signup previously failed on a debit card; retry with a physical
-   credit card, home network, ap-melbourne-1, then PAYG upgrade).
-   Plan B tripwire: GCE e2-standard-2 in `agent-era` (~$35, zero
-   friction) the same day Oracle fails again. Investigated and ruled
-   out 2026-07-22: DataHub Cloud free trials (both the sales-contact
-   path and the datahub.com/google-cloud-free-trial page) are
-   sales-gated — no self-serve signup exists. Once a box exists:
-   `scripts/oracle_vm_setup.sh` (any Ubuntu host) → harden →
-   `scripts/ingest_all.sh` → repo secrets → demo PR #5 reruns live.
+1. **Judge-facing DataHub instance — plan A: AWS EC2 on the user's
+   credits** (docs/AWS_BRINGUP.md, 2026-07-23): t4g.xlarge + quickstart,
+   ~$65 through judging, covered by credits; Elastic IP so stop/start
+   keeps secrets valid. Fallbacks: Oracle Always Free (credit-card
+   retry) or GCE (~$35). Cloud trials verified sales-gated 2026-07-22.
+   Once the box exists: `scripts/oracle_vm_setup.sh` (any Ubuntu host) →
+   harden → `scripts/ingest_all.sh` → repo secrets → demo PRs rerun
+   live.
 2. **Gemini key** (`GOOGLE_API_KEY` secret) — exercises the ADK/ACK
    narrative path end-to-end; set a spend cap on the key when creating it.
 3. **Demo video** (3 min) — script skeleton in docs/SUBMISSION.md appendix;
