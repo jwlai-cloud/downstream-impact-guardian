@@ -144,3 +144,11 @@ def test_narrative_attribution_labels_template_vs_llm():
     report.narrative_source = "openai/qwen3.6-flash"
     body = pr_comment.render(report, [], [], mode="live")
     assert "Narrative by `openai/qwen3.6-flash`" in body
+
+
+def test_narrative_attribution_failed_llm_is_distinct():
+    report, _ = _report()
+    report.narrative_source = "failed:openai/qwen3.6-flash"
+    body = pr_comment.render(report, [], [], mode="live")
+    assert "Narrative LLM call failed" in body
+    assert "no narrative LLM configured" not in body
