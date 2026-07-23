@@ -64,7 +64,11 @@ jobs:
           dbt-project-dir: transforms          # your dbt project path
           datahub-url: ${{ secrets.DATAHUB_GMS_URL }}
           datahub-token: ${{ secrets.DATAHUB_GMS_TOKEN }}
-          google-api-key: ${{ secrets.GOOGLE_API_KEY }}   # optional narrative
+          # optional narrative LLM — see "Choosing the narrative LLM" below
+          google-api-key: ${{ secrets.GOOGLE_API_KEY }}
+          narrative-model: ${{ vars.GUARDIAN_NARRATIVE_MODEL }}
+          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          openai-base-url: ${{ vars.OPENAI_BASE_URL }}
           warehouse-project: my-gcp-project
           warehouse-dataset: analytics
 ```
@@ -75,6 +79,26 @@ dir, a committed last-known-production manifest at
 `datahub/business_glossary.yml` for semantic-drift detection. All inputs in
 [`action.yml`](action.yml). This repo consumes its own action — the demo
 workflow is the reference integration.
+
+### Choosing the narrative LLM (optional — any provider, or none)
+
+The LLM only writes the impact narrative. Severity, blast radius, contracts
+and codegen are deterministic — **with no key configured everything still
+works**, with a deterministic narrative. Provider selection is repo
+configuration, never code:
+
+| Repo setting | Kind | Gemini | OpenAI | Qwen (or any OpenAI-compatible) |
+|---|---|---|---|---|
+| `GUARDIAN_NARRATIVE_MODEL` | variable | `gemini-flash-latest` | `openai/gpt-5.6-luna` | `openai/qwen3.6-flash` |
+| `GOOGLE_API_KEY` | secret | ✅ | — | — |
+| `OPENAI_API_KEY` | secret | — | ✅ | ✅ (DashScope key) |
+| `OPENAI_BASE_URL` | variable | — | omit (default) | `https://dashscope-intl.aliyuncs.com/compatible-mode/v1` |
+
+`gemini-*` ids run on ADK's native Gemini path; anything else is routed
+through LiteLLM against the given OpenAI-compatible endpoint. Qwen
+`qwen3.6-flash` costs ≈ $0.0006 per guardian run. The narrative call is
+best-effort with a 120 s bound: a wrong key or a provider outage degrades
+to the deterministic narrative, never a failed check.
 
 ## Try it (judges)
 
@@ -104,7 +128,7 @@ the guardian reads in CI.
 
 ## Status
 
-Core loop complete, tested (26 tests, no network needed), and proven live in CI:
+Core loop complete, tested (44 tests, no network needed), and proven live in CI:
 detection (dbt manifest diff + glossary drift) → blast radius (DataHub
 lineage + observed queries) → Data Contract writeback (PROPOSED) →
 deterministic compat codegen → idempotent PR comment. See

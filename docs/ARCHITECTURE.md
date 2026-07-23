@@ -101,7 +101,7 @@ or contracts.
 | `dbt_demo_project/` | fiction-retail: seeds → staging → `fct_orders` → `revenue_daily`; glossary + ingestion recipes (ADR-0001, ADR-0005) |
 | `examples/generated/` | Real output of a run against `demo/breaking-change` |
 | `tools/demo_ui/web/` | **The one-button demo (live)** — Vercel page + 2 serverless functions: click → unique `demo/run-*` branch + PR on the consumer repo → poll check → render the guardian's comment inline (bot-author-verified + DOMPurify-sanitized). PAT scoped to the demo repo only |
-| [`fiction-retail-dbt`](https://github.com/jwlai-cloud/fiction-retail-dbt) | **Independent consumer repo** — integrates via one `uses:` block; three standing draft demo PRs: #1 rename+drift+glossary (CRITICAL 22), #2 whole-model deletion (CRITICAL 10), #3 silent metric drift + suspected semantic drift (HIGH 6) |
+| [`fiction-retail-dbt`](https://github.com/jwlai-cloud/fiction-retail-dbt) | **Independent consumer repo** — integrates via one `uses:` block; four standing draft demo PRs, all live-mode: #1 rename+drift+glossary (CRITICAL 23), #2 whole-model deletion (CRITICAL), #3 silent metric drift + suspected semantic drift (HIGH), #5 pure expression tweak — the precision-ladder showcase with a 🟢 SAFE (declared) row |
 
 ## Modes
 
