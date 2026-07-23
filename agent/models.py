@@ -62,7 +62,11 @@ class Consumer:
     hops: int = 1
     detail: str = ""
     owners: list[str] = field(default_factory=list)  # DataHub ownership
-    impact: str = ""           # BROKEN | DISTORTED | ADVISORY (ADR-0010)
+    impact: str = ""           # BROKEN | DISTORTED | ADVISORY | SAFE (ADR-0010)
+    # Declared column dependencies (ADR-0010 addendum): upstream model ->
+    # columns this consumer states it reads. Present => impact becomes
+    # fact for that edge; absent => worst-case.
+    declared_deps: dict[str, list[str]] = field(default_factory=dict)
 
 
 @dataclass

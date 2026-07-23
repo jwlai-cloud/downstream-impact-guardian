@@ -20,7 +20,13 @@
    "detail": "marketing team's LTV feature table \u2014 different repo, different team",
    "owners": [
     "marketing-analytics@fiction-retail.example"
-   ]
+   ],
+   "declared_deps": {
+    "fct_orders": [
+     "order_total",
+     "customer_id"
+    ]
+   }
   },
   {
    "name": "Finance KPIs",
@@ -32,6 +38,23 @@
    "owners": [
     "finance-bi@fiction-retail.example"
    ]
+  },
+  {
+   "name": "ops.open_orders_snapshot",
+   "platform": "bigquery",
+   "entity_type": "dataset",
+   "urn": "urn:li:dataset:(urn:li:dataPlatform:bigquery,agent-era.ops.open_orders_snapshot,PROD)",
+   "hops": 1,
+   "detail": "ops team snapshot \u2014 declares its columns",
+   "owners": [
+    "ops-eng@fiction-retail.example"
+   ],
+   "declared_deps": {
+    "fct_orders": [
+     "order_id",
+     "order_status"
+    ]
+   }
   }
  ],
  "revenue_daily": [

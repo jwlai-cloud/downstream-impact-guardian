@@ -40,6 +40,30 @@ def classify_impact(change: ModelChange) -> str:
     return "ADVISORY"
 
 
+def classify_declared_impact(change: ModelChange,
+                             declared: list[str]) -> str:
+    """Fact-based impact for a consumer that DECLARED its columns on this
+    model (ADR-0010 addendum). Verdicts here are facts, not upper bounds:
+    - model deleted -> BROKEN (the relation itself is gone)
+    - declared ∩ removed/renamed columns -> BROKEN
+    - filter/join logic change -> DISTORTED (every column's values move —
+      a declaration cannot clear it)
+    - expression change intersecting declared -> DISTORTED
+    - otherwise -> SAFE"""
+    if "removed" in change.kinds:
+        return "BROKEN"
+    declared_set = {d.lower() for d in declared}
+    if declared_set & {c.lower() for c in _changed_column_names(change)}:
+        return "BROKEN"
+    if "logic" in change.kinds:
+        exprs = {c.lower() for c in change.changed_expressions}
+        if not exprs:                # filters/joins: values move everywhere
+            return "DISTORTED"
+        if declared_set & exprs:
+            return "DISTORTED"
+    return "SAFE"
+
+
 def assess(model_changes: list[ModelChange],
            glossary_changes: list[GlossaryChange],
            consumers: dict[str, list[Consumer]],
@@ -55,9 +79,12 @@ def assess(model_changes: list[ModelChange],
             score += W_LOGIC_PLAIN
 
         cs = consumers.get(change.model_name, [])
-        impact = classify_impact(change)
-        order = {"": 0, "ADVISORY": 1, "DISTORTED": 2, "BROKEN": 3}
+        worst_case = classify_impact(change)
+        order = {"": 0, "SAFE": 1, "ADVISORY": 2, "DISTORTED": 3, "BROKEN": 4}
         for c in cs:
+            declared = c.declared_deps.get(change.model_name)
+            impact = (classify_declared_impact(change, declared)
+                      if declared is not None else worst_case)
             if order[impact] > order.get(c.impact, 0):
                 c.impact = impact
         score += min(len(cs) * W_PER_CONSUMER, W_CONSUMER_CAP)
@@ -82,7 +109,7 @@ def assess(model_changes: list[ModelChange],
     # stable identity (urn, else name/platform/type), take max impact,
     # union owners, and write back to every instance so any survivor of
     # downstream dedup carries the correct verdict.
-    order = {"": 0, "ADVISORY": 1, "DISTORTED": 2, "BROKEN": 3}
+    order = {"": 0, "SAFE": 1, "ADVISORY": 2, "DISTORTED": 3, "BROKEN": 4}
     by_key: dict[tuple, list[Consumer]] = {}
     for cs in consumers.values():
         for c in cs:

@@ -14,6 +14,37 @@ from agent.config import FIXTURES_DIR, Config
 from agent.models import Consumer, QueryUsage
 
 
+def parse_declared_deps(custom_props: dict) -> dict[str, list[str]]:
+    """Tolerant parser for depends_on_columns custom properties (ADR-0010
+    addendum). Ingestion flattens dbt meta differently across versions:
+    - single key "depends_on_columns" with a JSON dict value
+    - dotted keys "depends_on_columns.<model>" with JSON-list or
+      comma-separated string values"""
+    deps: dict[str, list[str]] = {}
+    for key, raw in (custom_props or {}).items():
+        if not str(key).startswith("depends_on_columns"):
+            continue
+        try:
+            if key == "depends_on_columns":
+                parsed = json.loads(raw) if isinstance(raw, str) else raw
+                if isinstance(parsed, dict):
+                    for model, cols in parsed.items():
+                        deps[str(model)] = [str(c) for c in cols]
+            else:
+                model = str(key).split(".", 1)[1]
+                if isinstance(raw, str):
+                    try:
+                        cols = json.loads(raw.replace("'", '"'))
+                    except Exception:
+                        cols = [c.strip() for c in raw.split(",") if c.strip()]
+                else:
+                    cols = list(raw)
+                deps[model] = [str(c) for c in cols]
+        except Exception:
+            continue  # malformed declaration: ignore, fall back to worst-case
+    return deps
+
+
 class DataHubReader(Protocol):
     def get_dataset_urn(self, model_name: str) -> str | None: ...
     def get_schema(self, model_name: str) -> list[dict]: ...
@@ -117,13 +148,14 @@ class LiveDataHubClient:
                        ... on Dataset {
                          name
                          platform { name }
+                         properties { customProperties { key value } }
                          ownership { owners { owner {
                            ... on CorpUser { username }
                            ... on CorpGroup { name }
                          } } }
                        }
                        ... on Dashboard {
-                         properties { name }
+                         properties { name customProperties { key value } }
                          platform { name }
                          ownership { owners { owner {
                            ... on CorpUser { username }
@@ -154,6 +186,9 @@ class LiveDataHubClient:
             owners = [(o.get("owner") or {}).get("username")
                       or (o.get("owner") or {}).get("name")
                       for o in ((e.get("ownership") or {}).get("owners") or [])]
+            props = ((e.get("properties") or {}).get("customProperties") or [])
+            custom = {p_["key"]: p_["value"] for p_ in props
+                      if isinstance(p_, dict) and "key" in p_}
             consumers.append(Consumer(
                 name=name,
                 platform=(e.get("platform") or {}).get("name", "unknown"),
@@ -161,6 +196,7 @@ class LiveDataHubClient:
                 urn=e["urn"],
                 hops=r.get("degree", 1),
                 owners=[o for o in owners if o],
+                declared_deps=parse_declared_deps(custom),
             ))
         # dbt ingestion creates a dbt + warehouse sibling per model; both
         # appear in lineage. Collapse to one logical consumer (lowest hops).
