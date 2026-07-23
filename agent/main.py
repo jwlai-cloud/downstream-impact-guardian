@@ -68,11 +68,16 @@ def run(args) -> int:
                                  consumers, queries, suspected)
     print(f"[guardian] severity={report.severity} score={report.score}")
 
-    # Optional: ADK/Gemini narrative on top of the deterministic one.
+    # Narrative LLM: misconfiguration fails loudly; configured+keyed runs
+    # the model; nothing configured keeps the labeled template narrative.
     import os as _os
+    from agent.adk_agent import enrich_narrative, validate_narrative_config
+    config_error = validate_narrative_config(config.google_api_key)
+    if config_error:
+        print(f"::error title=Guardian narrative misconfigured::{config_error}")
+        return 2
     if config.mode == "live" and (config.google_api_key
                                   or _os.environ.get("OPENAI_API_KEY")):
-        from agent.adk_agent import enrich_narrative
         enrich_narrative(report, reader, config.google_api_key)
         print(f"[guardian] narrative source: {report.narrative_source}")
 

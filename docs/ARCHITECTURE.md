@@ -54,8 +54,8 @@ agent reads and writes, not how it's wired.
 ```
 deterministic pipeline (main.py)          ← owns control flow, always runs
    └── enrich_narrative()                 ← live mode only, best-effort,
-        └── ADK Runner                       120s bound, failure = keep
-             └── InMemorySessionService        deterministic narrative
+        └── ADK Runner                       120s bound, runtime failure =>
+             └── InMemorySessionService        labeled template fallback
              └── Agent "downstream_impact_guardian"
                   ├── model: resolve_model(GUARDIAN_NARRATIVE_MODEL)
                   │     gemini-* → ADK-native string

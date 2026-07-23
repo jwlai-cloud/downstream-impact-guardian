@@ -118,14 +118,42 @@ async def _run(report: ImpactReport, reader) -> str:
     return final.strip()
 
 
+def validate_narrative_config(google_api_key: str) -> str | None:
+    """A configured model with no key for its provider is a plumbing
+    error, not a fallback case — fail loudly with the fix (the silent
+    template fallback is reserved for 'no LLM configured at all')."""
+    import os
+    model = (os.environ.get("GUARDIAN_NARRATIVE_MODEL") or "").strip()
+    if not model:
+        return None
+    if model.startswith("gemini"):
+        if not google_api_key:
+            return (f"narrative-model '{model}' is configured but no Google "
+                    "key is set. Add GOOGLE_API_KEY as a GitHub Actions "
+                    "secret (repo Settings → Secrets and variables → "
+                    "Actions) and pass it via the action's google-api-key "
+                    "input — or unset GUARDIAN_NARRATIVE_MODEL.")
+        return None
+    if not os.environ.get("OPENAI_API_KEY"):
+        return (f"narrative-model '{model}' is configured but OPENAI_API_KEY "
+                "is empty. Add it as a GitHub Actions secret (repo Settings "
+                "→ Secrets and variables → Actions) and pass it via the "
+                "action's openai-api-key input (plus openai-base-url for "
+                "OpenAI-compatible providers) — or unset "
+                "GUARDIAN_NARRATIVE_MODEL.")
+    return None
+
+
 def enrich_narrative(report: ImpactReport, reader, api_key: str) -> None:
-    """Best-effort: replace the deterministic narrative with an LLM one
+    """Best-effort: replace the template narrative with an LLM-written one
     (Gemini by default; any LiteLLM-supported provider via
-    GUARDIAN_NARRATIVE_MODEL + that provider's env vars). Any failure
-    leaves the deterministic report untouched."""
+    GUARDIAN_NARRATIVE_MODEL + that provider's env vars). A runtime
+    failure (provider outage, rejected key) keeps the labeled template —
+    but is surfaced as an Actions error annotation, never swallowed."""
     import os
     if not api_key and not os.environ.get("OPENAI_API_KEY"):
         return
+    model = (os.environ.get("GUARDIAN_NARRATIVE_MODEL") or DEFAULT_MODEL).strip()
     try:
         if api_key:
             os.environ.setdefault("GOOGLE_API_KEY", api_key)
@@ -133,6 +161,9 @@ def enrich_narrative(report: ImpactReport, reader, api_key: str) -> None:
         text = asyncio.run(asyncio.wait_for(_run(report, reader), timeout=120))
         if text:
             report.narrative = text
-            report.narrative_source = "gemini-adk"
+            report.narrative_source = model
     except Exception as exc:
+        print(f"::error title=Guardian narrative LLM failed::{model}: "
+              f"{type(exc).__name__} — check the provider key secret and "
+              "base URL; report falls back to the labeled template narrative.")
         print(f"[guardian] ADK narrative skipped: {exc}")

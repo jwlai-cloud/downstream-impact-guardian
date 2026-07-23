@@ -153,11 +153,12 @@ Two invariants make it trustworthy rather than magical:
 - **Narrative:** Google ADK `Agent`, first-party DataHub tools,
   **provider-agnostic by repo configuration**: `gemini-*` runs ADK-native;
   any other id routes through LiteLLM against an OpenAI-compatible
-  endpoint (our demo runs Qwen `qwen3.6-flash` via DashScope,
-  ≈ $0.0006/run — see README "Choosing the narrative LLM"). Offline, or
-  with no key at all, the agent degrades to a deterministic renderer —
-  the full comment still renders and lands in `$GITHUB_STEP_SUMMARY`;
-  the LLM never scores either way.
+  endpoint. Our demo makes a **real Qwen call per run**
+  (`qwen3.6-flash` via DashScope, ≈ $0.0006/run — see README "Choosing
+  the narrative LLM"), and the comment attributes the narrative to the
+  model that wrote it. A configured-but-keyless setup fails the check
+  with the exact secret to add; only keyless forks fall back to a
+  template summary, labeled as such. The LLM never scores either way.
 - **Demo world:** a fiction-retail dbt project (seeds → staging →
   `fct_orders` → `revenue_daily`) on BigQuery, with a formal business
   glossary attached via dbt `meta`.
