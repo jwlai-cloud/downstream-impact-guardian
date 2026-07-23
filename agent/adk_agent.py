@@ -35,7 +35,9 @@ definitions). Then reply with ONLY:
 1. An impact narrative of at most 150 words, written for the PR author,
    concrete about who breaks and why.
 2. A line 'ACTIONS:' followed by the top 3 recommended actions as bullets.
-Do not restate the raw data; interpret it."""
+Do not restate the raw data; interpret it. Plain prose and the ACTIONS
+bullets only — no markdown headers, no titles, no horizontal rules (your
+text is embedded inside an existing report)."""
 
 
 def build_tools(reader):
