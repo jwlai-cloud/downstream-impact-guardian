@@ -38,6 +38,37 @@ DASH_KPI = "urn:li:dashboard:(looker,finance_kpis)"
 DASH_BOARD = "urn:li:dashboard:(looker,board_pack)"
 
 
+def preflight() -> None:
+    """Fail fast with a clear message — this is a manual, maintainer-side
+    tool (never part of the Action/agent path, which has its own offline
+    mode). Default target is the documented local quickstart."""
+    try:
+        req = urllib.request.Request(f"{GMS}/health")
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            resp.read()
+    except Exception as e:
+        raise SystemExit(
+            f"Cannot reach DataHub GMS at {GMS} ({e}).\n"
+            "Set DATAHUB_GMS_URL to your instance (and DATAHUB_GMS_TOKEN "
+            "if metadata auth is enabled), or start the local quickstart.")
+
+
+def get_ownership_owners(urn: str) -> list[dict]:
+    """Current owners of an entity (empty if none) — so seeding merges
+    instead of clobbering pre-existing ownership."""
+    from urllib.parse import quote
+    req = urllib.request.Request(
+        f"{GMS}/aspects/{quote(urn, safe='')}?aspect=ownership&version=0",
+        headers={**({"Authorization": f"Bearer {TOKEN}"} if TOKEN else {})})
+    try:
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            body = json.loads(resp.read())
+        return (body.get("aspect", {}).get("com.linkedin.common.Ownership", {})
+                .get("owners", []))
+    except Exception:
+        return []
+
+
 def emit(entity_type: str, urn: str, aspect_name: str, aspect: dict) -> None:
     body = json.dumps({
         "proposal": {
@@ -61,11 +92,14 @@ def emit(entity_type: str, urn: str, aspect_name: str, aspect: dict) -> None:
     print(f"  {aspect_name:<20} {urn}")
 
 
-def ownership(*emails: str) -> dict:
-    return {"owners": [
-        {"owner": f"urn:li:corpuser:{e}", "type": "TECHNICAL_OWNER"}
-        for e in emails],
-        "lastModified": AUDIT}
+def ownership(*emails: str, merge_urn: str | None = None) -> dict:
+    """Ownership aspect; pass merge_urn for entities that may already have
+    owners (aspect UPSERT replaces wholesale — never clobber)."""
+    existing = get_ownership_owners(merge_urn) if merge_urn else []
+    have = {o.get("owner") for o in existing}
+    new = [{"owner": f"urn:li:corpuser:{e}", "type": "TECHNICAL_OWNER"}
+           for e in emails if f"urn:li:corpuser:{e}" not in have]
+    return {"owners": existing + new, "lastModified": AUDIT}
 
 
 def upstream(*urns: str) -> dict:
@@ -74,6 +108,7 @@ def upstream(*urns: str) -> dict:
         for u in urns]}
 
 
+preflight()
 print("datasets:")
 emit("dataset", LTV, "datasetProperties", {
     "name": "customer_ltv",
@@ -95,7 +130,7 @@ emit("dataset", OPS, "ownership", ownership("ops-eng@fiction-retail.example"))
 emit("dataset", OPS, "upstreamLineage", upstream(FCT))
 
 emit("dataset", REV, "ownership",
-     ownership("data-team@fiction-retail.example"))
+     ownership("data-team@fiction-retail.example", merge_urn=REV))
 
 # Declares it reads ONLY order_date from revenue_daily — a metric
 # redefinition there leaves it untouched, earning the 🟢 SAFE verdict.
