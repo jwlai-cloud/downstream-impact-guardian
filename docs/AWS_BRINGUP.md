@@ -1,5 +1,8 @@
 # Judge-facing DataHub on AWS (the credits route)
 
+> One row of the deployment menu — see `DEPLOY_OPTIONS.md` for the
+> cost comparison (Hetzner/Oracle/local-tunnel/GCE) before choosing.
+
 EC2 + Docker quickstart — same shape as the Oracle/GCE plans, funded by
 AWS credits. Everything after the box exists is shared with
 `ORACLE_BRINGUP.md`: same setup script, same hardening, same
@@ -78,7 +81,8 @@ Re-trigger a demo PR → live mode.
 
 ## Decision status
 
-Supersedes the Oracle plan as plan A while credits exist (no signup
-fraud-filter fight, no Always-Free capacity roulette). ORACLE_BRINGUP.md
-stays as the $0 fallback. ADR-0003's self-hosted-OSS decision is
-unchanged — only the box vendor moved.
+One option on the menu, not plan A — ~$65 through judging is the most
+expensive row in `DEPLOY_OPTIONS.md` (Hetzner lands at ~$16, Oracle and
+a local tunnel at $0). Take this route only if AWS credits genuinely
+cover it. ADR-0003's self-hosted-OSS decision is unchanged — only the
+box vendor moves.
