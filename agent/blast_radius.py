@@ -167,7 +167,7 @@ def _deterministic_narrative(r: ImpactReport) -> str:
     for s in (r.suspected_drifts or []):
         parts.append(
             f"Suspected semantic drift: `{s.model_name}.{s.column}` is bound "
-            f"to glossary term **{s.term_name}** and its logic changed, but "
+            f"to glossary term **{s.term_name}** and the model's logic changed, but "
             f"this PR does not update the term — verify the live definition "
             f"still holds.")
     return " ".join(parts) if parts else "No impactful changes detected."
