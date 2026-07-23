@@ -1,6 +1,6 @@
-// POST {scenario: "rename" | "delete"} -> creates a unique demo branch from
-// the pre-staged scenario branch and opens a PR in the consumer repo.
-// Token is a fine-grained PAT scoped to ONE demo repo, server-side only.
+// POST {scenario: "rename" | "delete" | "drift"} -> creates a unique demo
+// branch from the pre-staged scenario branch and opens a PR in the consumer
+// repo. Token is a fine-grained PAT scoped to ONE demo repo, server-side only.
 const SCENARIOS = {
   rename: {
     branch: "demo/rename-order-total",
@@ -9,6 +9,10 @@ const SCENARIOS = {
   delete: {
     branch: "demo/delete-revenue-daily",
     title: "Remove revenue_daily — finance says they don't use it anymore",
+  },
+  drift: {
+    branch: "demo/silent-metric-drift",
+    title: "Exclude refunded orders from daily revenue",
   },
 };
 const MAX_OPEN_RUNS = 5;
@@ -48,7 +52,7 @@ async function cleanupStale() {
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "POST only" });
   const scenario = SCENARIOS[(req.body || {}).scenario];
-  if (!scenario) return res.status(400).json({ error: "scenario must be 'rename' or 'delete'" });
+  if (!scenario) return res.status(400).json({ error: "scenario must be 'rename', 'delete' or 'drift'" });
 
   try {
     const active = await cleanupStale();
