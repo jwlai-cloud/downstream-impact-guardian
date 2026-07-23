@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Downstream Impact Guardian — judge workbench</title>
-<meta name="description" content="Zero-credential judge workbench: real guardian reports from three standing demo PRs, checked in as verified runs.">
+<meta name="description" content="Zero-credential judge workbench: real guardian reports from four standing demo PRs, checked in as verified runs.">
 <style>
   :root { --paper:#F7FAF7; --ink:#182420; --muted:#5A6B64; --line:#D8E2DC;
     --card:#FFFFFF; --accent:#0E7C6B; --accent-soft:#E3F0EC;
@@ -80,14 +80,14 @@
 
   <div class="pills">
     <span class="pill">Apache 2.0</span>
-    <span class="pill">44 unit tests</span>
+    <span class="pill">48 unit tests</span>
     <span class="pill">reusable composite action</span>
     <span class="pill">offline mode = first-class</span>
   </div>
 
   <h2>Three judge routes, in effort order</h2>
   <ol class="routes">
-    <li><b>60 seconds — this page</b><span>Read the three verified reports
+    <li><b>60 seconds — this page</b><span>Read the four verified reports
       below. Each was posted by the published action running cross-repo on
       a standing demo PR; links go to the live comments.</span></li>
     <li><b>5 minutes — trigger it yourself</b><span>Open a PR between the
@@ -103,14 +103,16 @@
       notes.</span></li>
   </ol>
 
-  <h2>Verified runs — three failure modes</h2>
+  <h2>Verified runs — four scenarios</h2>
   <div class="tabs" role="tablist" aria-label="Scenarios">
     <button role="tab" aria-selected="true" data-s="1">Rename + metric drift + glossary rewrite
-      <span class="v crit">🔴 CRITICAL (22) · PR #1</span></button>
+      <span class="v crit">🔴 CRITICAL · PR #1</span></button>
     <button role="tab" aria-selected="false" data-s="2">Whole model deleted
-      <span class="v crit">🔴 CRITICAL (10) · PR #2</span></button>
+      <span class="v crit">🔴 CRITICAL · PR #2</span></button>
     <button role="tab" aria-selected="false" data-s="3">One WHERE clause tightened
-      <span class="v high">🟠 HIGH (6) · suspected semantic drift · PR #3</span></button>
+      <span class="v high">🟠 HIGH · suspected semantic drift · PR #3</span></button>
+    <button role="tab" aria-selected="false" data-s="5">Pure expression tweak
+      <span class="v ok" style="color:var(--ok)">🟢 SAFE row — precision-ladder showcase · PR #5</span></button>
   </div>
   <p class="meta">
     <span id="live-link"></span>
@@ -123,7 +125,7 @@
     <em>worst-case upper bound</em> unless the consumer declared its column
     dependencies — then it becomes fact, including the 🟢 SAFE verdict.
     Severity scoring and code generation are deterministic and unit-tested;
-    the LLM only narrates. DataHub is never fed the PR’s hypothetical state.
+    the LLM narrates (attributed in every report: Qwen via Google ADK + Agent Context Kit). DataHub is never fed the PR’s hypothetical state.
   </div>
 
   <h2>Adopt it</h2>
@@ -147,7 +149,8 @@
 <script>
   const PRS = {1:"https://github.com/jwlai-cloud/fiction-retail-dbt/pull/1",
                2:"https://github.com/jwlai-cloud/fiction-retail-dbt/pull/2",
-               3:"https://github.com/jwlai-cloud/fiction-retail-dbt/pull/3"};
+               3:"https://github.com/jwlai-cloud/fiction-retail-dbt/pull/3",
+               5:"https://github.com/jwlai-cloud/fiction-retail-dbt/pull/5"};
   const report = document.getElementById("report");
   const liveLink = document.getElementById("live-link");
   async function show(n) {

@@ -169,7 +169,7 @@ def render(report: ImpactReport, contracts: list[ContractResult],
         for s in (report.suspected_drifts or []):
             lines += [f"**{s.term_name}** — ⚠️ suspected",
                       f"- `{s.model_name}.{s.column}` is bound to this term "
-                      f"and its logic changed, but this PR does not update "
+                      f"and the model's logic changed, but this PR does not update "
                       f"the term's definition.",
                       f"- DataHub (current business meaning): "
                       f"{s.live_definition}",
