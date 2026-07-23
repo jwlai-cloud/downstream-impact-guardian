@@ -22,12 +22,16 @@ over-platform a demo.
   under the full stack.
 - **Key pair**: create/download one for SSH.
 - **Storage**: 60 GB gp3.
-- **Security group** (inbound):
-  | Port | Source | Purpose |
+- **Security group** (inbound) — start restricted; widen only after
+  step 3 hardening (a fresh quickstart ships `datahub`/`datahub` and no
+  API auth — don't publish that):
+
+  | Port | Source at launch | After step 3 |
   |---|---|---|
-  | 22 | your-ip/32 | SSH |
-  | 9002 | 0.0.0.0/0 | DataHub UI (judges) |
-  | 8080 | 0.0.0.0/0 | GMS API (Action + MCP; token-gated after step 3) |
+  | 22 | your-ip/32 | unchanged |
+  | 9002 | your-ip/32 | 0.0.0.0/0 (DataHub UI, judges) |
+  | 8080 | your-ip/32 | 0.0.0.0/0 (GMS API — Action + MCP, token-gated) |
+
 - Optional: allocate + associate an **Elastic IP** so the address
   survives stop/start (secrets reference it).
 
@@ -54,18 +58,29 @@ Same as ORACLE_BRINGUP steps 5 + security section:
 3. Create a read-only **judge** user + token (expiry Sep 1) — that pair
    goes in the Devpost testing field; the admin token goes in repo
    secrets only.
-4. Plain-HTTP caveat applies (bearer token on the wire): acceptable for
-   a disposable fiction-data demo; Caddy + a domain if you want TLS.
+4. Only now widen 9002/8080 to 0.0.0.0/0 in the security group.
+5. Transport: prefer **Caddy + a domain (free TLS)** so tokens never
+   cross the wire in plaintext. Running plain HTTP is a documented,
+   deliberate risk acceptance for this instance only: the catalog holds
+   fictional demo data, the judge token is read-only, and both tokens
+   expire Sep 1 and are rotated/torn down after judging — interception
+   buys vandalism of a disposable fiction catalog, nothing more. Do not
+   copy this trade-off to any instance with real data.
 
 ## 4. Ingest + wire (from your Mac)
 
 ```bash
 DATAHUB_GMS_URL=http://<ec2-ip>:8080 DATAHUB_GMS_TOKEN=<admin-token> \
   bash scripts/ingest_all.sh
-gh secret set DATAHUB_GMS_URL  -R jwlai-cloud/downstream-impact-guardian   # and fiction-retail-dbt
-gh secret set DATAHUB_GMS_TOKEN -R jwlai-cloud/downstream-impact-guardian  # and fiction-retail-dbt
-gh variable set GCP_PROJECT -R jwlai-cloud/downstream-impact-guardian --body "agent-era"
-gh variable set BQ_DATASET  -R jwlai-cloud/downstream-impact-guardian --body "fiction_retail"
+
+# secrets + variables must exist in BOTH repos — the consumer repo's
+# workflow reads its own copies:
+for repo in jwlai-cloud/downstream-impact-guardian jwlai-cloud/fiction-retail-dbt; do
+  gh secret set DATAHUB_GMS_URL  -R "$repo"
+  gh secret set DATAHUB_GMS_TOKEN -R "$repo"
+  gh variable set GCP_PROJECT -R "$repo" --body "agent-era"
+  gh variable set BQ_DATASET  -R "$repo" --body "fiction_retail"
+done
 ```
 
 Re-trigger a demo PR → live mode.
