@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Downstream Impact Guardian — judge workbench</title>
+<meta name="description" content="Zero-credential judge workbench: real guardian reports from three standing demo PRs, checked in as verified runs.">
+<style>
+  :root { --paper:#F7FAF7; --ink:#182420; --muted:#5A6B64; --line:#D8E2DC;
+    --card:#FFFFFF; --accent:#0E7C6B; --accent-soft:#E3F0EC;
+    --crit:#B3261E; --high:#8A5A00; --ok:#2E6B34; --code-bg:#EEF4F0; }
+  @media (prefers-color-scheme: dark) { :root { --paper:#111917; --ink:#E5EEE9;
+    --muted:#93A69D; --line:#293933; --card:#17221E; --accent:#4FB8A2;
+    --accent-soft:#1B2E29; --crit:#E5766C; --high:#D9A84E; --ok:#7CBF84;
+    --code-bg:#1C2A25; } }
+  * { box-sizing:border-box; }
+  body { background:var(--paper); color:var(--ink); margin:0;
+    font-family:Seravek,"Avenir Next","Segoe UI",system-ui,sans-serif;
+    line-height:1.6; padding:2rem 1.25rem 5rem; }
+  main { max-width:76ch; margin:0 auto; }
+  .eyebrow { font-family:ui-monospace,"SF Mono",Menlo,monospace; font-size:.72rem;
+    letter-spacing:.14em; text-transform:uppercase; color:var(--accent); margin:0 0 .5rem; }
+  h1 { font-size:1.85rem; line-height:1.15; margin:0 0 .5rem; font-weight:650; text-wrap:balance; }
+  .sub { color:var(--muted); margin:0 0 1.4rem; max-width:64ch; }
+  h2 { font-size:1.2rem; margin:2.4rem 0 .8rem; padding-top:1.4rem;
+    border-top:1px solid var(--line); }
+  a { color:var(--accent); }
+  code { font-family:ui-monospace,"SF Mono",Menlo,monospace; font-size:.86em;
+    background:var(--code-bg); padding:.1em .35em; border-radius:4px; }
+  .pills { display:flex; flex-wrap:wrap; gap:.5rem; margin:0 0 1.4rem; }
+  .pill { font-family:ui-monospace,"SF Mono",Menlo,monospace; font-size:.72rem;
+    padding:.26rem .65rem; border-radius:999px; background:var(--accent-soft);
+    color:var(--accent); border:1px solid var(--line); }
+  .routes { display:grid; grid-template-columns:repeat(auto-fit,minmax(14rem,1fr));
+    gap:.7rem; margin:0 0 1rem; padding:0; list-style:none; }
+  .routes li { background:var(--card); border:1px solid var(--line);
+    border-top:3px solid var(--accent); border-radius:8px; padding:.7rem .9rem;
+    font-size:.9rem; margin:0; }
+  .routes b { display:block; margin-bottom:.2rem; }
+  .routes span { color:var(--muted); font-size:.84rem; }
+  .tabs { display:flex; flex-wrap:wrap; gap:.5rem; margin:0 0 1rem; }
+  .tabs button { font:inherit; font-size:.88rem; cursor:pointer;
+    background:var(--card); color:var(--ink); border:1px solid var(--line);
+    border-radius:8px; padding:.55rem .9rem; text-align:left; }
+  .tabs button[aria-selected="true"] { border-color:var(--accent);
+    background:var(--accent-soft); }
+  .tabs .v { display:block; font-family:ui-monospace,Menlo,monospace;
+    font-size:.7rem; margin-top:.15rem; }
+  .v.crit { color:var(--crit); } .v.high { color:var(--high); }
+  .meta { display:flex; flex-wrap:wrap; gap:.8rem; align-items:baseline;
+    margin:0 0 .8rem; font-size:.85rem; color:var(--muted); }
+  .report { background:var(--card); border:1px solid var(--line);
+    border-radius:10px; padding:1.1rem 1.3rem; overflow-x:auto; }
+  .report table { border-collapse:collapse; width:100%; font-size:.85rem; margin:.6rem 0 1rem; }
+  .report th, .report td { text-align:left; padding:.4rem .6rem;
+    border-bottom:1px solid var(--line); vertical-align:top; }
+  .report th { font-size:.72rem; text-transform:uppercase; letter-spacing:.06em;
+    color:var(--muted); }
+  .report pre { background:var(--code-bg); border-radius:8px; padding:.8rem 1rem;
+    overflow-x:auto; font-size:.8rem; line-height:1.5; }
+  .report blockquote { border-left:3px solid var(--line); margin:0 0 1rem;
+    padding:.2rem 0 .2rem 1rem; color:var(--muted); }
+  .note { border-left:3px solid var(--accent); background:var(--card);
+    border-radius:0 8px 8px 0; padding:.8rem 1rem; margin:1rem 0; font-size:.9rem; }
+  ul { padding-left:1.2rem; } li { margin-bottom:.3rem; }
+  .foot { margin-top:3rem; font-family:ui-monospace,Menlo,monospace;
+    font-size:.72rem; color:var(--muted); }
+</style>
+</head>
+<body>
+<main>
+  <p class="eyebrow">Build with DataHub · The Agent Hackathon · judge workbench</p>
+  <h1>The PR looks fine. DataHub knows it isn't.</h1>
+  <p class="sub">Downstream Impact Guardian is a reusable GitHub Action: on
+  every dbt pull request it detects schema / logic / semantic drift, reads
+  DataHub for the real cross-system blast radius, writes a PROPOSED Data
+  Contract back into the catalog, and posts one comment with mergeable
+  compatibility code. Everything below is a <strong>real, checked-in
+  guardian run</strong> — no account, credentials, or setup required.</p>
+
+  <div class="pills">
+    <span class="pill">Apache 2.0</span>
+    <span class="pill">44 unit tests</span>
+    <span class="pill">reusable composite action</span>
+    <span class="pill">offline mode = first-class</span>
+  </div>
+
+  <h2>Three judge routes, in effort order</h2>
+  <ol class="routes">
+    <li><b>60 seconds — this page</b><span>Read the three verified reports
+      below. Each was posted by the published action running cross-repo on
+      a standing demo PR; links go to the live comments.</span></li>
+    <li><b>5 minutes — trigger it yourself</b><span>Open a PR between the
+      pre-staged branches of
+      <a href="https://github.com/jwlai-cloud/fiction-retail-dbt">fiction-retail-dbt</a>
+      (read access suffices on a public repo) and watch the real Action
+      post its verdict.</span></li>
+    <li><b>Power route — interrogate the catalog</b><span>Point your own
+      agent at the catalog via the shipped
+      <a href="https://github.com/jwlai-cloud/downstream-impact-guardian/blob/master/.mcp.json"><code>.mcp.json</code></a>
+      (<code>mcp-server-datahub</code>) and ask “who breaks if fct_orders
+      drops order_total?” Connection details in the Devpost testing
+      notes.</span></li>
+  </ol>
+
+  <h2>Verified runs — three failure modes</h2>
+  <div class="tabs" role="tablist" aria-label="Scenarios">
+    <button role="tab" aria-selected="true" data-s="1">Rename + metric drift + glossary rewrite
+      <span class="v crit">🔴 CRITICAL (22) · PR #1</span></button>
+    <button role="tab" aria-selected="false" data-s="2">Whole model deleted
+      <span class="v crit">🔴 CRITICAL (10) · PR #2</span></button>
+    <button role="tab" aria-selected="false" data-s="3">One WHERE clause tightened
+      <span class="v high">🟠 HIGH (6) · suspected semantic drift · PR #3</span></button>
+  </div>
+  <p class="meta">
+    <span id="live-link"></span>
+    <span>Snapshot of the guardian’s actual PR comment (checked in, verifiable against the live PR).</span>
+  </p>
+  <div id="report" class="report" aria-live="polite">Loading report…</div>
+
+  <div class="note">
+    <b>Why these reports are honest.</b> Per-consumer impact is labeled a
+    <em>worst-case upper bound</em> unless the consumer declared its column
+    dependencies — then it becomes fact, including the 🟢 SAFE verdict.
+    Severity scoring and code generation are deterministic and unit-tested;
+    the LLM only narrates. DataHub is never fed the PR’s hypothetical state.
+  </div>
+
+  <h2>Adopt it</h2>
+  <div class="report"><pre><code>- uses: jwlai-cloud/downstream-impact-guardian@master
+  with:
+    dbt-project-dir: dbt
+    datahub-url: ${{ secrets.DATAHUB_GMS_URL }}
+    datahub-token: ${{ secrets.DATAHUB_GMS_TOKEN }}</code></pre></div>
+  <p>That block is the consumer repo’s entire integration surface — its
+  first real run even caught a portability bug dogfooding never could.</p>
+
+  <p class="foot">
+    <a href="https://github.com/jwlai-cloud/downstream-impact-guardian">downstream-impact-guardian</a> ·
+    <a href="https://github.com/jwlai-cloud/fiction-retail-dbt">fiction-retail-dbt (consumer)</a> ·
+    docs/ARCHITECTURE.md · docs/adr/ · CONTEXT.md · design blog in docs/blog/
+  </p>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
+<script>
+  const PRS = {1:"https://github.com/jwlai-cloud/fiction-retail-dbt/pull/1",
+               2:"https://github.com/jwlai-cloud/fiction-retail-dbt/pull/2",
+               3:"https://github.com/jwlai-cloud/fiction-retail-dbt/pull/3"};
+  const report = document.getElementById("report");
+  const liveLink = document.getElementById("live-link");
+  async function show(n) {
+    document.querySelectorAll(".tabs [role=tab]").forEach(b =>
+      b.setAttribute("aria-selected", b.dataset.s === String(n)));
+    liveLink.innerHTML = `<a href="${PRS[n]}" rel="noopener">View the live PR comment →</a>`;
+    report.textContent = "Loading report…";
+    try {
+      const md = await (await fetch(`reports/scenario-${n}.md`)).text();
+      report.innerHTML = DOMPurify.sanitize(marked.parse(md));
+    } catch {
+      report.innerHTML = `Could not load the snapshot — read it live on <a href="${PRS[n]}">the PR</a>.`;
+    }
+  }
+  document.querySelectorAll(".tabs [role=tab]").forEach(b =>
+    b.addEventListener("click", () => show(Number(b.dataset.s))));
+  show(1);
+</script>
+</body>
+</html>
