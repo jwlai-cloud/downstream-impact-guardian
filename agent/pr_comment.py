@@ -24,7 +24,15 @@ def render(report: ImpactReport, contracts: list[ContractResult],
                      "credentials in this run). Lineage/query data below "
                      "comes from committed fixtures; on the maintainer's "
                      "instance this runs live.")
-    lines += ["", report.narrative, ""]
+    # Honest attribution: never let template text read as model prose.
+    if report.narrative_source == "deterministic":
+        attribution = ("_Summary compiled from the detected facts — no "
+                       "narrative LLM configured (see README “Choosing the "
+                       "narrative LLM”)._")
+    else:
+        attribution = (f"_Narrative by `{report.narrative_source}` via "
+                       "Google ADK + DataHub Agent Context Kit._")
+    lines += ["", report.narrative, "", attribution, ""]
 
     if report.model_changes:
         lines += ["### What changed", "",

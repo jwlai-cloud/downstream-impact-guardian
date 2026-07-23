@@ -176,3 +176,30 @@ def test_parse_declared_deps_variants():
     ) == {"fct_orders": ["order_id", "order_date"]}
     assert parse_declared_deps({"unrelated": "x"}) == {}
     assert parse_declared_deps({"depends_on_columns": "not json ["}) == {}
+
+
+def test_validate_narrative_config(monkeypatch):
+    from agent.adk_agent import validate_narrative_config as v
+    monkeypatch.delenv("GUARDIAN_NARRATIVE_MODEL", raising=False)
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    # nothing configured -> fine (labeled template narrative)
+    assert v("") is None
+    # gemini model without a Google key -> actionable error
+    monkeypatch.setenv("GUARDIAN_NARRATIVE_MODEL", "gemini-flash-latest")
+    assert "GOOGLE_API_KEY" in v("")
+    assert v("some-google-key") is None
+    # OpenAI-compatible model without OPENAI_API_KEY -> actionable error
+    monkeypatch.setenv("GUARDIAN_NARRATIVE_MODEL", "openai/qwen3.6-flash")
+    assert "OPENAI_API_KEY" in v("")
+    monkeypatch.setenv("OPENAI_API_KEY", "k")
+    assert v("") is None
+
+
+def test_validate_narrative_config_openai_key_without_model(monkeypatch):
+    from agent.adk_agent import validate_narrative_config as v
+    monkeypatch.delenv("GUARDIAN_NARRATIVE_MODEL", raising=False)
+    monkeypatch.setenv("OPENAI_API_KEY", "k")
+    # OpenAI key alone would silently target the Gemini default -> error
+    assert "GUARDIAN_NARRATIVE_MODEL" in v("")
+    # ...unless a Google key exists for the Gemini default
+    assert v("google-key") is None

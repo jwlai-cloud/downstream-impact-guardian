@@ -134,3 +134,13 @@ def test_column_level_effects_section():
     assert "1 observed query reference it" in body
     assert "expression changed" in body
     assert "direct evidence, not inference" in body
+
+
+def test_narrative_attribution_labels_template_vs_llm():
+    report, _ = _report()
+    assert report.narrative_source == "deterministic"
+    body = pr_comment.render(report, [], [], mode="live")
+    assert "no narrative LLM configured" in body
+    report.narrative_source = "openai/qwen3.6-flash"
+    body = pr_comment.render(report, [], [], mode="live")
+    assert "Narrative by `openai/qwen3.6-flash`" in body

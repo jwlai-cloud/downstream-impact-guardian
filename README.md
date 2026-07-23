@@ -82,10 +82,12 @@ workflow is the reference integration.
 
 ### Choosing the narrative LLM (optional — any provider, or none)
 
-The LLM only writes the impact narrative. Severity, blast radius, contracts
-and codegen are deterministic — **with no key configured everything still
-works**, with a deterministic narrative. Provider selection is repo
-configuration, never code:
+The guardian makes a **real LLM call on every configured live run** to
+write the impact narrative — configure a key for the provider of your
+choice.
+Severity, blast radius, contracts and codegen never involve the LLM
+(deterministic, unit-tested). Provider selection is repo configuration,
+never code:
 
 | Repo setting | Kind | Gemini | OpenAI | Qwen (or any OpenAI-compatible) |
 |---|---|---|---|---|
@@ -95,10 +97,20 @@ configuration, never code:
 | `OPENAI_BASE_URL` | variable | — | omit (default) | `https://dashscope-intl.aliyuncs.com/compatible-mode/v1` |
 
 `gemini-*` ids run on ADK's native Gemini path; anything else is routed
-through LiteLLM against the given OpenAI-compatible endpoint. Qwen
-`qwen3.6-flash` costs ≈ $0.0006 per guardian run. The narrative call is
-best-effort with a 120 s bound: a wrong key or a provider outage degrades
-to the deterministic narrative, never a failed check.
+through LiteLLM against the given OpenAI-compatible endpoint. Cost
+scales with tokens: a typical guardian run (~2k input + ~600 output
+tokens) lands around $0.0006 on Qwen `qwen3.6-flash` international
+list pricing — check your provider's current per-token rates.
+
+Failure semantics are explicit, never silent:
+- **model configured, key missing → the check fails** with an error that
+  names the exact secret to add — a misconfiguration is a plumbing error;
+- **provider outage / rejected key at runtime** → an Actions error
+  annotation, and the report falls back to a template summary **labeled
+  as such** in the comment (the facts and tables are unaffected — they
+  never come from the LLM);
+- **nothing configured** → the same labeled template summary; useful for
+  keyless forks, but configure a key for the real thing.
 
 ## Try it (judges)
 
