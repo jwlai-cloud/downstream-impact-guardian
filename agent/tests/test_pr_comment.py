@@ -109,8 +109,15 @@ def test_slack_payload_and_gating(monkeypatch):
     consumers = {"m": [Consumer(name="Dash", platform="looker",
                                 entity_type="dashboard", owners=["bi@x"])]}
     report = blast_radius.assess([ch], [], consumers, {})
-    payload = pr_comment.build_slack_payload(report, "https://pr/1")
-    assert "DISTORTED: Dash (bi@x)" in payload["text"]
+    payload = pr_comment.build_slack_payload(
+        report, "https://github.com/o/fiction-retail-dbt/pull/1")
+    # Block Kit now, with a text fallback for clients without blocks.
+    assert "blocks" in payload and payload["text"]
+    blocks_text = " ".join(
+        b["text"]["text"] for b in payload["blocks"]
+        if isinstance(b.get("text"), dict))
+    assert "DISTORTED" in blocks_text and "Dash" in blocks_text and "bi@x" in blocks_text
+    assert "fiction-retail-dbt#1" in blocks_text            # PR ref parsed from url
     # gating: LOW severity + no webhook -> no crash, no send
     monkeypatch.delenv("SLACK_WEBHOOK_URL", raising=False)
     pr_comment.notify_slack(report, "https://pr/1")

@@ -45,10 +45,32 @@ queries hit it, what a business term currently means.
 functions become tools via introspection. Design choice worth remembering:
 the LLM here *narrates* — scoring and codegen stay deterministic and
 unit-tested, so the agent works (degraded but complete) with no key at all.
-That split is why 26 tests run in 0.2 s with zero network.
+That split is why **48 tests** run in a fraction of a second with zero
+network. Docs: https://google.github.io/adk-docs/
 
 - Quickstart pattern used: `Runner.run_async` + `InMemorySessionService`
-  (agent/adk_agent.py). Model: `gemini-flash-latest`.
+  (agent/adk_agent.py). It makes a **real LLM call on every configured run**
+  — not a template — and retries 3× with backoff (180s per attempt) on
+  transient provider blips before dropping to a labeled template summary
+  with a `> [!WARNING]` banner.
+- **Provider is repo configuration, never code.** `GUARDIAN_NARRATIVE_MODEL`
+  chooses the model: a `gemini-*` id runs on ADK's native path; anything
+  else (`openai/gpt-4o-mini`, `openai/qwen3.6-flash`, …) is wrapped in ADK's
+  **LiteLlm** adapter against an OpenAI-compatible endpoint
+  (`OPENAI_API_BASE`) with `OPENAI_API_KEY` (or `GOOGLE_API_KEY` for Gemini).
+  The demo narrates with `openai/qwen3.6-flash` on Alibaba DashScope. LiteLLM
+  docs: https://docs.litellm.ai/
+- A configured model with no key for its provider **fails the check** with
+  the exact secret to add (a plumbing error, not a fallback case); the silent
+  template is reserved for "no LLM configured at all" (keyless forks).
+
+## sqlglot — metric drift with per-column attribution
+
+Detector #2 (metric/logic drift) parses each model's SQL with **sqlglot** and
+diffs expressions column by column, so the report can say *which* field's
+logic changed rather than just "the model changed". Filter/join changes stay
+model-level by design — they move every column's values, so no single column
+owns the change. https://github.com/tobymao/sqlglot
 
 ## dbt state semantics without a warehouse
 
@@ -57,6 +79,14 @@ what lets CI diff prod-vs-PR manifests with zero warehouse credentials
 (dbt's own `state:modified` idea, reimplemented as a column-level diff
 because `dbt ls` yields node names only).
 https://docs.getdbt.com/reference/node-selection/methods#state
+
+This is also why the demo dataset is a *custom* dbt-shaped fiction-retail
+project (`dbt_demo_project/`: seed CSVs → `stg_customers`/`stg_orders` →
+`fct_orders` → `revenue_daily`) and **not** the DataHub
+`static-assets/datasets/fiction-retail` sample — that sample is a standalone
+SQLite DB plus ingest scripts, which produce no dbt manifest, so the
+manifest-diff detector has nothing to compare. Same domain and name, chosen
+for the artifact the core actually needs.
 
 Gotchas that cost real time:
 - `dbt docs generate` **overwrites `run_results.json`** with an entry the
@@ -71,6 +101,8 @@ Gotchas that cost real time:
 A composite action (`action.yml`, `runs.using: composite`) turns a repo
 into an installable bot: consumers add one `uses:` block; the consumer's
 runner is the compute; `github.action_path` locates the action's own code.
+Docs:
+https://docs.github.com/en/actions/sharing-automations/creating-actions/creating-a-composite-action
 Two security lessons, both caught by review bots or the permission
 classifier:
 - **Never interpolate `${{ inputs.* }}` into `run:` scripts** — expression
@@ -92,9 +124,11 @@ two-layer firewall (VCN Security List AND on-instance iptables REJECT
 rule), and signup fraud filters that dislike debit cards.
 Runbook: docs/ORACLE_BRINGUP.md.
 
-## Related work
+## The core insight (why this isn't just a linter)
 
-Pinterest's automated schema evolution — same "schema is a cross-system
-contract" worldview, opposite trade-off (pipeline ownership + deep
-automation vs catalog context + consequence analysis). Full comparison:
-docs/SPEC.md §12.
+Detecting a schema change is the easy half — a diff does it. Knowing *who
+downstream depends on it* is the hard half, and that knowledge lives in the
+catalog, not the code: cross-team consumers, dashboards, and scheduled
+queries that no single repo can see. That asymmetry is the whole reason the
+agent reads DataHub instead of only the PR. Full design rationale:
+docs/SPEC.md.

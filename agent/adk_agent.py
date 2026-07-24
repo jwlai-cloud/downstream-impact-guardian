@@ -7,10 +7,29 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 
 from agent.models import ImpactReport
 
 DEFAULT_MODEL = "gemini-flash-latest"
+
+
+class _DropDefaultValueWarning(logging.Filter):
+    """ADK's function-declaration builder logs one WARNING per tool parameter
+    that has a default value ("Default value is not supported in function
+    declaration schema for Google AI"). It's harmless (the default is just
+    dropped from the schema), fires even for non-Gemini providers via LiteLLM,
+    and only clutters the Action log. Drop that one message; keep every other
+    ADK warning."""
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        return ("Default value is not supported in function declaration schema"
+                not in record.getMessage())
+
+
+logging.getLogger(
+    "google_adk.google.adk.tools._function_parameter_parse_util"
+).addFilter(_DropDefaultValueWarning())
 
 
 def resolve_model(name: str | None):

@@ -158,7 +158,8 @@ first real consumer run, invisible to dogfooding).
 detect (dbt manifests + glossary yml)          repo-side, deterministic
   → blast radius (DataHub lineage + queries    catalog-side
      + ownership + declared deps)
-  → narrative (one flat ADK agent)             best-effort, 120s bound
+  → narrative (real LLM call, one flat ADK      3× retry, 180s per attempt
+     agent; provider = repo config)
   → writeback 1: Data Contracts (PROPOSED)     catalog-side
   → codegen: *_compat / *_legacy views         deterministic templates
   → writeback 2: idempotent PR comment         repo-side
@@ -194,7 +195,7 @@ first-class offline mode: committed fixtures shaped exactly like live
 responses, the full report still renders (banner says so), and the body
 always lands in `$GITHUB_STEP_SUMMARY` where comment-posting isn't
 possible. Same mode let us build and test the whole pipeline before any
-DataHub instance existed. 44 tests, 0.3 seconds, zero network.
+DataHub instance existed. 48 tests, a fraction of a second, zero network.
 
 ## 4. Code walkthrough, the load-bearing bits
 
@@ -272,7 +273,7 @@ each.
 **Scenario 1 — the classic combo**
 ([PR #1](https://github.com/jwlai-cloud/fiction-retail-dbt/pull/1)):
 rename `order_total` → `order_amount_usd`, quietly redefine
-`gross_revenue`, update the glossary. → 🔴 **CRITICAL (22)**. The report
+`gross_revenue`, update the glossary. → 🔴 **CRITICAL (24)**. The report
 shows the rename, per-column attribution, two observed production
 queries that still reference the old column ("guaranteed breakage"),
 semantic drift with both definitions quoted, two proposed contracts, and
@@ -283,7 +284,7 @@ mergeable `fct_orders_compat` + `revenue_daily_legacy` views.
 **Scenario 2 — the deletion**
 ([PR #2](https://github.com/jwlai-cloud/fiction-retail-dbt/pull/2)):
 `git rm revenue_daily.sql`, "finance says they don't use it anymore."
-→ 🔴 **CRITICAL (10)**: *"revenue_daily: MODEL DELETED, 2 downstream
+→ 🔴 **CRITICAL (11)**: *"revenue_daily: MODEL DELETED, 2 downstream
 consumer(s); 1 observed production query still references the old
 column(s) — guaranteed breakage"* — plus a generated
 `revenue_daily_legacy` view so consumers keep a working relation while
@@ -295,7 +296,7 @@ Only the lineage graph knew.)
 **Scenario 3 — the quiet one**
 ([PR #3](https://github.com/jwlai-cloud/fiction-retail-dbt/pull/3)):
 one WHERE-clause edit, no columns touched, no glossary update, every test
-green. → 🟠 **HIGH (6)** with the flag I care most about: *"suspected
+green. → 🟠 **HIGH (7)** with the flag I care most about: *"suspected
 semantic drift: `revenue_daily.gross_revenue` is bound to glossary term
 **Gross Revenue** and its logic changed, but this PR does not update the
 term."* The forgot-the-glossary case, caught deterministically.

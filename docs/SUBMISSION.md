@@ -40,19 +40,15 @@ metadata graph. So we built the agent that stands in the gap: it reads
 the PR for what's *proposed*, reads DataHub for what's *real*, and
 refuses to let the two drift apart silently.
 
-Industry has validated the problem at scale: Pinterest's
-[automated schema evolution framework](https://medium.com/pinterest-engineering/automated-schema-evolution-in-pinterests-next-generation-db-ingestion-framework-36c5c07070de)
-treats schema as exactly this — "a cross-system contract spanning
-ingestion, transformation, storage" — and auto-evolves additive changes
-at the CDC layer, opening regenerated code as PRs for human review. But
-it can afford **no lineage, no catalog, and no downstream-consumer
-analysis** because Pinterest owns the entire pipeline; it also handles
-structural changes only, never metric or semantic drift. Most data
-teams own a dbt repo, not the pipeline. This project is the
-complementary, shift-left half: catalog context (DataHub) substitutes
-for pipeline ownership, so *any* dbt team gets consumer-aware impact
-analysis, semantic-drift detection, and contract proposals — at PR
-time, before anything ships.
+The insight worth sitting with: detecting a schema change is the easy
+half — a diff finds it, and in-repo CI can find it. Knowing *who
+downstream depends on it* is the hard half, and that knowledge lives in
+the catalog, not the code. Most data teams own a dbt repo, not the whole
+pipeline, so the cross-system consumer picture is exactly what they can't
+see from where they sit. This project is the shift-left half: catalog
+context (DataHub) substitutes for pipeline ownership, so *any* dbt team
+gets consumer-aware impact analysis, semantic-drift detection, and
+contract proposals — at PR time, before anything ships.
 
 ## What it does
 
@@ -77,7 +73,8 @@ On every pull request it:
    shape was promised" — approval happens by merging the PR, a human
    gate.
 4. **Writes back to the repo**: one idempotent PR comment with an
-   ADK/Gemini-narrated impact story plus generated, mergeable
+   ADK-narrated impact story (a real LLM call — Gemini or any configured
+   provider; the demo uses `openai/qwen3.6-flash`) plus generated, mergeable
    compatibility code — `*_compat` / `*_legacy` dbt views and schema.yml
    tests that keep old consumers alive through the change.
 
@@ -205,8 +202,9 @@ Two invariants make it trustworthy rather than magical:
   BigQuery: lineage traversal, sibling dedupe, glossary drift,
   `upsertDataContract` + PENDING status aspect all confirmed working,
   contract inspectable via OpenAPI.
-- **26/26 deterministic tests passing** in 0.2s — severity scoring and
-  codegen are fully unit-tested precisely because no LLM touches them.
+- **48/48 deterministic tests passing** in a fraction of a second —
+  severity scoring and codegen are fully unit-tested precisely because no
+  LLM touches them.
 - **Offline mode is first-class, not a degraded afterthought:** a fork
   PR with zero secrets still renders the complete impact comment from
   committed fixtures.
@@ -247,15 +245,12 @@ Two invariants make it trustworthy rather than magical:
 - **Richer rename detection** — today's heuristic handles the
   1-removed/1-added case and honestly flags the rest for a human;
   column-level lineage could close the gap.
-- **Column-expression diffing (removing the due-diligence dependency).**
-  Semantic drift detection currently leans on glossary terms being
-  attached — one act of human diligence per column. Parsing model SQL
-  (sqlglot) to map each column to its expression would make "which
-  field's logic changed" metadata-free, with the LLM classifying
-  meaning-altering vs mechanical changes — and would let the guardian
-  *invert* the diligence problem: spot metric-shaped columns with no
-  glossary term and propose one, manufacturing the governance it relies
-  on.
+- **Derived column-level lineage — the middle rung of the precision
+  ladder.** sqlglot per-column expression attribution and consumer-declared
+  `depends_on_columns` (the SAFE verdict) already ship; the remaining rung is
+  reading DataHub's column-level (schemaField) lineage so per-consumer impact
+  becomes fact even when a consumer hasn't declared its dependencies. That
+  closes the gap between *declared* and *worst-case* automatically.
 - **The one-click demo UI** (a button that opens a real breaking PR and
   narrates the run live) — the GitHub-API client and mock server are
   already built and tested in `tools/demo_ui/`.
@@ -292,21 +287,25 @@ form-fill time)*
 
 ## Appendix — video script notes (NOT part of the Devpost form)
 
+> **Note (2026-07-24):** the final cut is **v4, ~2:57**
+> (`captures/video/dig-demo-v4.mp4`). The shot list below is the working
+> plan the cut was built from — times are approximate; treat the delivered
+> v4 as authoritative on exact beats and durations.
+
 **"The edge" segment (~25s VO), place after the demo comment reveal,
 before the adoption snippet:**
 
-> Pinterest built an entire framework to treat schema as a cross-system
-> contract — automated evolution, regenerated code, human-gated PRs. It
-> works because Pinterest owns the whole pipeline, end to end. And even
-> then it stops at structure: no lineage, no semantics, no idea *who
-> breaks downstream*.
+> Detecting the schema change is the easy half — a diff does it, and CI
+> does it in-repo. The hard half is knowing *who breaks downstream*, and
+> that lives in the catalog, not the code: a finance dashboard, a marketing
+> feature table, a scheduled query — none of them in this repo, none of
+> them visible to CI.
 >
 > Most data teams don't own a pipeline. They own a dbt repo.
 >
-> Downstream Impact Guardian answers the question that framework leaves
-> open — who breaks? — using the only system that knows: the metadata
-> graph. Schema, metric, and meaning. Checked at PR time, before
-> anything ships.
+> Downstream Impact Guardian answers the question the repo can't — who
+> breaks? — using the only system that knows: the metadata graph. Schema,
+> metric, and meaning. Checked at PR time, before anything ships.
 
 **Design-intro beat (~15s VO), place between the comment reveal and the
 architecture flash:**
@@ -320,12 +319,11 @@ architecture flash:**
 On-screen beats for it: `Severity → the PR` · `Impact → each victim` ·
 `Stakeholders → from the catalog` · `declared > derived > worst-case`.
 
-On-screen beats: `Pinterest: schema = cross-system contract ✓` →
-`but: no lineage · no catalog · structure only` →
-`the missing half = DataHub`.
+On-screen beats: `schema change = the easy half ✓` →
+`who breaks downstream = the hard half` →
+`that lives in the catalog, not the code = DataHub`.
 
-Full structured comparison (similar/different/honest-framing):
-docs/SPEC.md §12.
+The core insight, stated in full: docs/SPEC.md §12.
 
 ### Shot list (~2:50 total — verify the platform's hard limit before locking)
 
@@ -350,10 +348,10 @@ S = static diagram.
 | 7 | 1:15–1:30 | A | "Queries that WILL break" section | "These are real observed queries — they still reference the old column. Guaranteed breakage." | highlight box on `order_total` in SQL |
 | 8 | 1:30–1:45 | A | Semantic drift + generated compat view | "And it doesn't just warn — it writes the fix. A compat view, mergeable as-is." | zoom on `order_amount_usd as order_total` |
 | 9 | 1:45–2:00 | C | DataHub lineage graph → contract entity (PENDING + provenance) | "Writeback two: a Data Contract, proposed into the catalog — the next team inherits the knowledge." | raw UI nav @1×, speed-ramp 2× between screens |
-| 10 | 2:00–2:25 | S/D | Architecture diagram, then Pinterest edge beats | Edge segment VO (appendix above) — end on the scale line: "The demo is four models and mocked dashboards — honestly labeled. Production is thousands of models across repos no single team can see. That's why the judgment comes from the catalog, not the codebase." | text-overlay beats: `Pinterest ✓` → `no lineage · structure only` → `missing half = DataHub` → `4 models here · 4,000 in prod · same agent` |
-| 11 | 2:25–2:33 | T | `pytest -q` → `44 passed in 0.3s` | "Deterministic core — the LLM narrates, it never scores and never writes the merged code." | big number overlay: **44 tests · 0.3 s** |
+| 10 | 2:00–2:25 | S/D | Architecture diagram, then the edge beats | Edge segment VO (appendix above) — end on the scale line: "The demo is four models and mocked dashboards — honestly labeled. Production is thousands of models across repos no single team can see. That's why the judgment comes from the catalog, not the codebase." | text-overlay beats: `easy half: the diff` → `hard half: who breaks` → `answer lives in the catalog` → `4 models here · 4,000 in prod · same agent` |
+| 11 | 2:25–2:33 | T | `pytest -q` → `48 passed` | "Deterministic core — the LLM narrates, it never scores and never writes the merged code." | big number overlay: **48 tests** |
 | 12 | 2:33–2:43 | S | Adoption `uses:` block | "One block in any dbt repo. The runner is the bot." | code overlay, typewriter reveal |
 | 13 | 2:43–2:50 | S | Repo URL + "open the demo PR yourself" | "Downstream Impact Guardian. The PR looks fine. DataHub knows better." | hold ≥5 s, readable |
 
 Post checklist: sound-off watchability pass; every number matches this doc
-(44 tests, CRITICAL 23, 48 s run); total runtime under the platform limit.
+(48 tests, CRITICAL 24, ~45 s run); total runtime under the platform limit.

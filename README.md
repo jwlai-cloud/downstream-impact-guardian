@@ -69,6 +69,8 @@ jobs:
           narrative-model: ${{ vars.GUARDIAN_NARRATIVE_MODEL }}
           openai-api-key: ${{ secrets.OPENAI_API_KEY }}
           openai-base-url: ${{ vars.OPENAI_BASE_URL }}
+          # optional Slack alert on HIGH/CRITICAL — see "Stakeholder alerts" below
+          slack-webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
           warehouse-project: my-gcp-project
           warehouse-dataset: analytics
 ```
@@ -79,6 +81,14 @@ dir, a committed last-known-production manifest at
 `datahub/business_glossary.yml` for semantic-drift detection. All inputs in
 [`action.yml`](action.yml). This repo consumes its own action — the demo
 workflow is the reference integration.
+
+> **About the demo dataset.** `dbt_demo_project/` is a *custom, dbt-shaped*
+> fiction-retail project we built ourselves (seed CSVs →
+> `stg_customers`/`stg_orders` → `fct_orders` → `revenue_daily`). It is
+> **not** the DataHub `static-assets/datasets/fiction-retail` sample — that
+> one is a standalone SQLite DB plus ingest scripts, which can't produce the
+> dbt manifests the manifest-diff detector needs. Same retail domain and
+> name, deliberately different artifact.
 
 ### Choosing the narrative LLM (optional — any provider, or none)
 
@@ -112,6 +122,25 @@ Failure semantics are explicit, never silent:
 - **nothing configured** → the same labeled template summary; useful for
   keyless forks, but configure a key for the real thing.
 
+The same honesty rule governs DataHub itself: a connection that is
+**configured but unreachable makes the run fail** — it never silently falls
+back to committed fixtures, because that would present fixture data as live.
+Offline fixture mode is only for the no-connection case (a fork PR with no
+secrets). DataHub is only ever read as *reality*; the PR's hypothetical state
+is never ingested.
+
+### Stakeholder alerts (Slack, optional)
+
+On **HIGH or CRITICAL** runs the guardian can post one summary message to
+Slack — severity, score, PR link, and the per-consumer blast radius with
+owners — so the affected teams are pulled into the PR review *before* the
+merge, not paged weeks after. Create an
+[incoming webhook](https://api.slack.com/messaging/webhooks), store it as the
+`SLACK_WEBHOOK_URL` secret, and pass it via the `slack-webhook-url` input.
+It's opt-in and fire-and-forget: unset → no-op; a webhook error is logged
+but never fails the check (`notify_slack` in `agent/pr_comment.py`). Advisory
+by design — the alert informs, it never blocks the merge.
+
 ## Try it (judges)
 
 Open a PR from the pre-made [`demo/breaking-change`](../../compare/master...demo/breaking-change)
@@ -140,18 +169,25 @@ the guardian reads in CI.
 
 ## Status
 
-Core loop complete, tested (44 tests, no network needed), and proven live in CI:
+Core loop complete, tested (48 tests, no network needed), and proven live in CI:
 detection (dbt manifest diff + glossary drift) → blast radius (DataHub
 lineage + observed queries) → Data Contract writeback (PROPOSED) →
-deterministic compat codegen → idempotent PR comment. See
-`docs/ARCHITECTURE.md` for the system shape, `docs/adr/` for decisions,
-[the design blog](docs/blog/2026-07-23-designing-honest-blast-radius.md) for the full story,
-`docs/SPEC.md` for design history, `docs/PROGRESS.md` for current state,
-and `CLAUDE.md` for working context. The live path (lineage, glossary
-drift, `upsertDataContract`) is verified against a real self-hosted OSS
-instance; the standing demo PR (#5, draft) carries a real guardian report posted
-by the Action. Remaining before submission: judge-facing instance
-(`docs/ORACLE_BRINGUP.md`), repo secrets, demo video.
+deterministic compat codegen → idempotent PR comment. The live path (lineage,
+glossary drift, `upsertDataContract`) is verified against a real self-hosted
+OSS instance; a real run reports `severity=CRITICAL score=24`, both contracts
+`upserted`, narrative written by `openai/qwen3.6-flash`, comment posted. The
+2:57 demo video is cut, the narrative retry + fallback banner and Slack
+alerting are shipped and documented, and an interactive engineering tutorial
+("how it's built") is published:
+<https://claude.ai/code/artifact/c578039e-bce6-4330-8396-cb48b739e7c6>.
+
+See `docs/ARCHITECTURE.md` for the system shape, `docs/adr/` for decisions,
+[the design blog](docs/blog/2026-07-23-designing-honest-blast-radius.md) and
+[the launch post](docs/blog/launch-post.md) for the story, `docs/SPEC.md` for
+design history, `docs/LEARNING.md` for the tech breakdown, `docs/PROGRESS.md`
+for current state, and `CLAUDE.md` for working context. Remaining before
+submission: a permanent DataHub instance for the judging window
+(`docs/DEPLOY_OPTIONS.md`) and the Devpost submission form.
 
 ## License
 
