@@ -184,8 +184,9 @@ def enrich_narrative(report: ImpactReport, reader, api_key: str) -> None:
             last_exc = RuntimeError("model returned an empty narrative")
         except Exception as exc:
             last_exc = exc
-            print(f"[guardian] narrative attempt {attempt + 1}/3 failed: "
-                  f"{type(exc).__name__}: {exc}")
+        # Log every attempt that didn't return — empty responses included.
+        print(f"[guardian] narrative attempt {attempt + 1}/3 failed: "
+              f"{type(last_exc).__name__}: {last_exc}")
     # Label the failure distinctly — "configured but failed" must never
     # render as "not configured" in the comment.
     report.narrative_source = f"failed:{model}"
