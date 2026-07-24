@@ -150,5 +150,10 @@ def test_narrative_attribution_failed_llm_is_distinct():
     report, _ = _report()
     report.narrative_source = "failed:openai/qwen3.6-flash"
     body = pr_comment.render(report, [], [], mode="live")
-    assert "Narrative LLM call failed" in body
+    # A configured-but-failed run gets a prominent warning banner naming the
+    # model + "check the provider" — never the "not configured" wording.
+    assert "[!WARNING]" in body
+    assert "Narrative LLM unavailable" in body
+    assert "check the provider" in body
+    assert "openai/qwen3.6-flash" in body
     assert "no narrative LLM configured" not in body
