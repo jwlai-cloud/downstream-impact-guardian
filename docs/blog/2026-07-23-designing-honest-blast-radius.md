@@ -284,7 +284,7 @@ mergeable `fct_orders_compat` + `revenue_daily_legacy` views.
 **Scenario 2 — the deletion**
 ([PR #2](https://github.com/jwlai-cloud/fiction-retail-dbt/pull/2)):
 `git rm revenue_daily.sql`, "finance says they don't use it anymore."
-→ 🔴 **CRITICAL (10)**: *"revenue_daily: MODEL DELETED, 2 downstream
+→ 🔴 **CRITICAL (11)**: *"revenue_daily: MODEL DELETED, 2 downstream
 consumer(s); 1 observed production query still references the old
 column(s) — guaranteed breakage"* — plus a generated
 `revenue_daily_legacy` view so consumers keep a working relation while
@@ -296,7 +296,7 @@ Only the lineage graph knew.)
 **Scenario 3 — the quiet one**
 ([PR #3](https://github.com/jwlai-cloud/fiction-retail-dbt/pull/3)):
 one WHERE-clause edit, no columns touched, no glossary update, every test
-green. → 🟠 **HIGH (6)** with the flag I care most about: *"suspected
+green. → 🟠 **HIGH (7)** with the flag I care most about: *"suspected
 semantic drift: `revenue_daily.gross_revenue` is bound to glossary term
 **Gross Revenue** and its logic changed, but this PR does not update the
 term."* The forgot-the-glossary case, caught deterministically.
