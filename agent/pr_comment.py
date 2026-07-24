@@ -235,22 +235,53 @@ def render(report: ImpactReport, contracts: list[ContractResult],
     return "\n".join(lines)
 
 
+_IMPACT_EMOJI = {"BROKEN": "🔴", "DISTORTED": "🟠", "SAFE": "🟢", "ADVISORY": "🔵"}
+
+
 def build_slack_payload(report: ImpactReport, pr_url: str) -> dict:
-    """One summary message for HIGH/CRITICAL runs (ADR-0010)."""
-    victims = []
-    seen = set()
+    """One Block Kit summary message for HIGH/CRITICAL runs (ADR-0010).
+    Every row is a real per-consumer verdict from the deterministic blast
+    radius — same data as the PR comment, never a curated subset."""
+    import re
+    rows, seen = [], set()
     for cs in report.consumers.values():
         for c in cs:
             key = c.urn or (c.name, c.platform, c.entity_type)
             if key in seen or not c.impact:
                 continue
             seen.add(key)
-            who = ", ".join(c.owners) if c.owners else "unowned"
-            victims.append(f"• {c.impact}: {c.name} ({who})")
-    text = (f":rotating_light: Downstream Impact Guardian — "
-            f"*{report.severity}* (score {report.score})\n"
-            f"{pr_url}\n" + "\n".join(victims[:10]))
-    return {"text": text}
+            who = ", ".join(c.owners) if c.owners else "⚠️ unowned"
+            rows.append(f"{_IMPACT_EMOJI.get(c.impact, '⚪')} *{c.impact}* · "
+                        f"{c.name} — {who}")
+
+    sev_emoji = ("🔴" if report.severity in ("CRITICAL", "HIGH")
+                 else "🟠" if report.severity == "MEDIUM" else "🟢")
+    m = re.search(r"github\.com/[^/]+/([^/]+)/pull/(\d+)", pr_url)
+    pr_ref = f"{m.group(1)}#{m.group(2)}" if m else "the pull request"
+    sub = " · ".join(b for b in [
+        f"{len(report.model_changes)} model change(s)" if report.model_changes else "",
+        f"{len(report.glossary_changes)} glossary drift(s)" if report.glossary_changes else "",
+    ] if b)
+
+    blocks = [
+        {"type": "section", "text": {"type": "mrkdwn",
+            "text": f"🛡️ *Downstream Impact Guardian* — {sev_emoji} *{report.severity}* (score {report.score})"}},
+        {"type": "section", "text": {"type": "mrkdwn",
+            "text": f"<{pr_url}|{pr_ref}>" + (f"\n_{sub}_" if sub else "")}},
+        {"type": "divider"},
+        {"type": "section", "text": {"type": "mrkdwn",
+            "text": "*Stakeholders to inform*\n" + "\n".join(rows[:12])}},
+    ]
+    n_q = sum(len(qs) for qs in report.queries.values())
+    if n_q:
+        blocks.append({"type": "context", "elements": [{"type": "mrkdwn",
+            "text": f"{n_q} observed production quer{'y' if n_q == 1 else 'ies'} "
+                    "still reference the changed columns — compatibility view + "
+                    "Data Contract in the PR comment."}]})
+    # text = notification/accessibility fallback (clients without Block Kit)
+    fallback = (f"Downstream Impact Guardian — {report.severity} (score "
+                f"{report.score}): {len(rows)} downstream consumers affected")
+    return {"text": fallback, "blocks": blocks}
 
 
 def notify_slack(report: ImpactReport, pr_url: str) -> None:
