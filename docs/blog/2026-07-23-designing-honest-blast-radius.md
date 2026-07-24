@@ -158,7 +158,8 @@ first real consumer run, invisible to dogfooding).
 detect (dbt manifests + glossary yml)          repo-side, deterministic
   → blast radius (DataHub lineage + queries    catalog-side
      + ownership + declared deps)
-  → narrative (one flat ADK agent)             best-effort, 120s bound
+  → narrative (real LLM call, one flat ADK      3× retry, 180s per attempt
+     agent; provider = repo config)
   → writeback 1: Data Contracts (PROPOSED)     catalog-side
   → codegen: *_compat / *_legacy views         deterministic templates
   → writeback 2: idempotent PR comment         repo-side
@@ -194,7 +195,7 @@ first-class offline mode: committed fixtures shaped exactly like live
 responses, the full report still renders (banner says so), and the body
 always lands in `$GITHUB_STEP_SUMMARY` where comment-posting isn't
 possible. Same mode let us build and test the whole pipeline before any
-DataHub instance existed. 44 tests, 0.3 seconds, zero network.
+DataHub instance existed. 48 tests, a fraction of a second, zero network.
 
 ## 4. Code walkthrough, the load-bearing bits
 
@@ -272,7 +273,7 @@ each.
 **Scenario 1 — the classic combo**
 ([PR #1](https://github.com/jwlai-cloud/fiction-retail-dbt/pull/1)):
 rename `order_total` → `order_amount_usd`, quietly redefine
-`gross_revenue`, update the glossary. → 🔴 **CRITICAL (22)**. The report
+`gross_revenue`, update the glossary. → 🔴 **CRITICAL (24)**. The report
 shows the rename, per-column attribution, two observed production
 queries that still reference the old column ("guaranteed breakage"),
 semantic drift with both definitions quoted, two proposed contracts, and

@@ -9,7 +9,7 @@ rationale in `SPEC.md`; decisions in `adr/`.
 |---|---|---|
 | **Agent Context Kit** (`build_google_adk_tools`, read-only) | ADK narrative agent, live mode | Track 1's named integration; full read surface (lineage, queries, assertions, schema, search) in-process |
 | **MCP Server** (`mcp-server-datahub`) | Interactive surface: `.mcp.json` for judges/devs pointing their own agents at the catalog | MCP is the right transport for external agents; redundant inside the CI process (ACK covers it) |
-| **GraphQL** (direct) | Deterministic pipeline reads + `upsertDataContract` writeback | Needs no LLM; covers what the Kit doesn't expose (contract upsert, sibling-aware assertion lookup) |
+| **GraphQL** (direct) | Deterministic pipeline reads + `upsertDataContract` writeback | Needs no LLM; covers what the Kit doesn't expose (contract upsert, sibling-aware assertion lookup). `searchAcrossLineage` runs with `searchFlags:{skipCache:true}` (a stale cache silently shrinks the blast radius); dbt+warehouse sibling nodes dedupe to one logical consumer; observed queries via `listQueries` |
 | **Ingestion** (dbt + business-glossary sources) | One-time prep, `scripts/ingest_all.sh` | dbt tests → assertions (contract backing); glossary versions (semantic drift baseline) |
 | **SDK aspect emission** | Contract status stamping + fallback | `dataContractStatus` state=PENDING + provenance |
 
@@ -34,7 +34,7 @@ flowchart LR
     Q --> BR
     G --> B
 
-    BR --> N["Impact narrative\nADK Agent + Gemini (live)\ndeterministic fallback (offline)"]
+    BR --> N["Impact narrative\nADK Agent + real LLM call (live)\nGemini native / any LiteLLM id\nlabeled template fallback"]
     S --> CG["Codegen (codegen.py)\ncompat + legacy views\n+ schema.yml tests"]
     BR --> CG
     AS --> CT["Writeback 1\nData Contract, PROPOSED\n(contract.py)"]
@@ -53,9 +53,11 @@ agent reads and writes, not how it's wired.
 
 ```
 deterministic pipeline (main.py)          ← owns control flow, always runs
-   └── enrich_narrative()                 ← live mode only, 120s bound;
-        │                                      on runtime failure keeps the
-        │                                      labeled template narrative
+   └── enrich_narrative()                 ← a REAL LLM call every configured
+        │                                      run; 3× retry w/ backoff on
+        │                                      transient blips, 180s per attempt;
+        │                                      on genuine failure keeps the
+        │                                      labeled template + WARNING banner
         └── ADK Runner
              └── InMemorySessionService
              └── Agent "downstream_impact_guardian"
@@ -98,12 +100,12 @@ or contracts.
 | `agent/blast_radius.py` | Lineage + query cross-reference; inspectable additive scoring → LOW/MEDIUM/HIGH/CRITICAL |
 | `agent/contract.py` | Writeback 1: upsert → SDK-emission fallback, PROPOSED provenance (ADR-0003) |
 | `agent/codegen.py` | Writeback 2 payload: deterministic `*_compat` / `*_legacy` views, live schema as the old-shape authority, `requires_human` flag for unmappable cases |
-| `agent/adk_agent.py` | Google ADK `Agent`; model pluggable via `GUARDIAN_NARRATIVE_MODEL` (Gemini native, or any LiteLLM id — OpenAI/Qwen via OpenAI-compatible base URL); tools from the first-party **DataHub Agent Context Kit** (read-only), local wrappers as fallback; 120s bound. Narrative only — see "ADK topology" |
+| `agent/adk_agent.py` | Google ADK `Agent` making a **real LLM call every configured run**; model pluggable via `GUARDIAN_NARRATIVE_MODEL` (`gemini-*` native, or any LiteLLM id — OpenAI/Qwen via OpenAI-compatible base URL + `OPENAI_API_BASE`); tools from the first-party **DataHub Agent Context Kit** (read-only), local wrappers as fallback; 3× retry w/ backoff, 180s per attempt; a configured-but-keyless run **fails the check** with the exact secret to add; a noisy ADK "Default value is not supported…for Google AI" warning is filtered out of the log. Narrative only — see "ADK topology" |
 | `agent/pr_comment.py` | Renders + posts one idempotent comment (HTML marker), mirrors to `$GITHUB_STEP_SUMMARY` |
-| `dbt_demo_project/` | fiction-retail: seeds → staging → `fct_orders` → `revenue_daily`; glossary + ingestion recipes (ADR-0001, ADR-0005) |
+| `dbt_demo_project/` | **Custom, dbt-shaped fiction-retail** (our own seed CSVs `raw_customers`/`raw_orders` → `stg_customers`/`stg_orders` → `fct_orders` → `revenue_daily`); glossary + ingestion recipes (ADR-0001, ADR-0005). NOT the DataHub `static-assets/datasets/fiction-retail` sample (that's a standalone SQLite DB + ingest scripts — no dbt manifests, so useless for manifest-diff detection); same domain/name, different artifact, built ours because the core needs dbt manifests |
 | `examples/generated/` | Real output of a run against `demo/breaking-change` |
 | `tools/demo_ui/web/` | **The one-button demo (live)** — Vercel page + 2 serverless functions: click → unique `demo/run-*` branch + PR on the consumer repo → poll check → render the guardian's comment inline (bot-author-verified + DOMPurify-sanitized). PAT scoped to the demo repo only |
-| [`fiction-retail-dbt`](https://github.com/jwlai-cloud/fiction-retail-dbt) | **Independent consumer repo** — integrates via one `uses:` block; four standing draft demo PRs, all live-mode: #1 rename+drift+glossary (CRITICAL 23), #2 whole-model deletion (CRITICAL), #3 silent metric drift + suspected semantic drift (HIGH), #5 pure expression tweak — the precision-ladder showcase with a 🟢 SAFE (declared) row |
+| [`fiction-retail-dbt`](https://github.com/jwlai-cloud/fiction-retail-dbt) | **Independent consumer repo** — integrates via one `uses:` block; four standing draft demo PRs, all live-mode and Qwen-narrated: #1 rename+drift+glossary (CRITICAL 24), #2 whole-model deletion (CRITICAL), #3 silent metric drift + suspected semantic drift (HIGH), #5 pure expression tweak — the precision-ladder showcase with a 🟢 SAFE (declared) row |
 
 ## Modes
 
@@ -112,8 +114,12 @@ or contracts.
 | Trigger condition | GMS URL + token present | any secret missing (e.g. fork PR) |
 | Lineage/queries/schema/glossary | DataHub GraphQL | `agent/fixtures/*.json` |
 | Contract | upsert → SDK fallback | exact payload recorded in the comment |
-| Narrative | ADK + Gemini, deterministic fallback | deterministic |
+| Narrative | ADK + real LLM call (Gemini native / any LiteLLM id), labeled template + WARNING banner on failure | labeled template (no key on a fork) |
 | PR comment | posted/updated | rendered; step summary always written |
+
+A connection that is **configured but unreachable fails the run** — it never
+silently drops to fixtures (that would present fixture data as live). Offline
+mode triggers only when no GMS URL/token is present at all.
 
 ## Judge paths (two)
 
@@ -140,9 +146,9 @@ consumer's runner is the compute). This repo dogfoods its own action.
   `data_type`; the live-schema path is where that would come from.
 - Prod-manifest refresh is a script, not a main-branch workflow — the
   obvious next automation.
-- Live-mode gaps still open: `listQueries` returns nothing until query
-  usage is ingested (fixtures carry the story meanwhile), and the ADK
-  narrative needs a `GOOGLE_API_KEY` secret to run.
+- Column-level lineage (the "derived" rung of the precision ladder) is not
+  yet implemented — per-consumer impact is worst-case unless a consumer
+  declares its `depends_on_columns`.
 
 ## Live verification (2026-07-15, local OSS quickstart)
 
@@ -155,3 +161,12 @@ live on the dbt sibling urn (client now merges both siblings), the upsert
 input rejects unknown keys (provenance moved to a status aspect), and
 `dbt docs generate` overwrites `run_results.json` (run tests last before
 ingesting).
+
+Live-mode day (2026-07-23/24): the four standing demo PRs re-ran without the
+offline banner via a tunnel to the quickstart, narrated by a **real
+`openai/qwen3.6-flash` call** on Alibaba DashScope. A representative run
+reports `severity=CRITICAL score=24`, both contracts `upserted`, narrative
+attributed to the model, comment posted. Seeding the cross-team consumer
+layer surfaced a real bug: GMS caches `searchAcrossLineage` per (urn,
+direction), so a freshly-seeded consumer was invisible until the read moved
+to `searchFlags:{skipCache:true}`.
