@@ -69,6 +69,8 @@ jobs:
           narrative-model: ${{ vars.GUARDIAN_NARRATIVE_MODEL }}
           openai-api-key: ${{ secrets.OPENAI_API_KEY }}
           openai-base-url: ${{ vars.OPENAI_BASE_URL }}
+          # optional Slack alert on HIGH/CRITICAL — see "Stakeholder alerts" below
+          slack-webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
           warehouse-project: my-gcp-project
           warehouse-dataset: analytics
 ```
@@ -111,6 +113,18 @@ Failure semantics are explicit, never silent:
   never come from the LLM);
 - **nothing configured** → the same labeled template summary; useful for
   keyless forks, but configure a key for the real thing.
+
+### Stakeholder alerts (Slack, optional)
+
+On **HIGH or CRITICAL** runs the guardian can post one summary message to
+Slack — severity, score, PR link, and the per-consumer blast radius with
+owners — so the affected teams are pulled into the PR review *before* the
+merge, not paged weeks after. Create an
+[incoming webhook](https://api.slack.com/messaging/webhooks), store it as the
+`SLACK_WEBHOOK_URL` secret, and pass it via the `slack-webhook-url` input.
+It's opt-in and fire-and-forget: unset → no-op; a webhook error is logged
+but never fails the check (`notify_slack` in `agent/pr_comment.py`). Advisory
+by design — the alert informs, it never blocks the merge.
 
 ## Try it (judges)
 
