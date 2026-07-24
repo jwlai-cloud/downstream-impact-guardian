@@ -26,19 +26,31 @@ def render(report: ImpactReport, contracts: list[ContractResult],
                      "instance this runs live.")
     # Honest attribution: never let template text read as model prose, and
     # never let "configured but failed" read as "not configured".
+    banner = ""
     if report.narrative_source == "deterministic":
         attribution = ("_Summary compiled from the detected facts — no "
                        "narrative LLM configured (see README “Choosing the "
                        "narrative LLM”)._")
     elif report.narrative_source.startswith("failed:"):
         model = report.narrative_source.removeprefix("failed:")
-        attribution = (f"_Narrative LLM call failed (`{model}` — see the "
-                       "Action log); summary compiled from the detected "
-                       "facts._")
+        # Prominent, honest: the key IS configured; the provider just didn't
+        # return usable output this run. The fallback is still real facts.
+        banner = ("> [!WARNING]\n"
+                  f"> **Narrative LLM unavailable — check the provider.** A key for "
+                  f"`{model}` is configured, but the provider returned no usable "
+                  "response after 3 attempts (see the Action log). The summary "
+                  "below is the **fallback template, compiled from real DataHub "
+                  "facts** — the blast radius, observed queries, Data Contract and "
+                  "generated code are all still accurate.")
+        attribution = (f"_Fallback template — the `{model}` narrative was "
+                       "unavailable on this run._")
     else:
         attribution = (f"_Narrative by `{report.narrative_source}` via "
                        "Google ADK + DataHub Agent Context Kit._")
-    lines += ["", report.narrative, "", attribution, ""]
+    lines += [""]
+    if banner:
+        lines += [banner, ""]
+    lines += [report.narrative, "", attribution, ""]
 
     if report.model_changes:
         lines += ["### What changed", "",

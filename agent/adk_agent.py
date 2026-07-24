@@ -158,22 +158,38 @@ def enrich_narrative(report: ImpactReport, reader, api_key: str) -> None:
     failure (provider outage, rejected key) keeps the labeled template —
     but is surfaced as an Actions error annotation, never swallowed."""
     import os
+    import time
     if not api_key and not os.environ.get("OPENAI_API_KEY"):
         return
     model = (os.environ.get("GUARDIAN_NARRATIVE_MODEL") or DEFAULT_MODEL).strip()
-    try:
-        if api_key:
-            os.environ.setdefault("GOOGLE_API_KEY", api_key)
-        # Bounded: a hung model call must not stall the Action job
-        text = asyncio.run(asyncio.wait_for(_run(report, reader), timeout=120))
-        if text:
-            report.narrative = text
-            report.narrative_source = model
-    except Exception as exc:
-        # Label the failure distinctly — "configured but failed" must never
-        # render as "not configured" in the comment.
-        report.narrative_source = f"failed:{model}"
-        print(f"::error title=Guardian narrative LLM failed::{model}: "
-              f"{type(exc).__name__} — check the provider key secret and "
-              "base URL; report falls back to the labeled template narrative.")
-        print(f"[guardian] ADK narrative skipped: {exc}")
+    if api_key:
+        os.environ.setdefault("GOOGLE_API_KEY", api_key)
+    # OpenAI-compatible endpoints (DashScope/Qwen, etc.) intermittently return a
+    # malformed stream chunk that surfaces as a transient AttributeError inside
+    # ADK/LiteLLM — a blip, not a config error. Retry a few times before
+    # dropping to the labeled template (same resilience as the GraphQL client).
+    last_exc: Exception | None = None
+    for attempt in range(3):
+        if attempt:
+            time.sleep(2 * attempt)
+        try:
+            # Bounded: a hung model call must not stall the Action job. Generous
+            # per-attempt budget — Qwen + several Agent Context Kit tool calls
+            # can legitimately run long before the final narrative.
+            text = asyncio.run(asyncio.wait_for(_run(report, reader), timeout=180))
+            if text:
+                report.narrative = text
+                report.narrative_source = model
+                return
+            last_exc = RuntimeError("model returned an empty narrative")
+        except Exception as exc:
+            last_exc = exc
+            print(f"[guardian] narrative attempt {attempt + 1}/3 failed: "
+                  f"{type(exc).__name__}: {exc}")
+    # Label the failure distinctly — "configured but failed" must never
+    # render as "not configured" in the comment.
+    report.narrative_source = f"failed:{model}"
+    print(f"::error title=Guardian narrative LLM failed::{model}: "
+          f"{type(last_exc).__name__} after 3 attempts — check the provider key "
+          "secret and base URL; report falls back to the labeled template narrative.")
+    print(f"[guardian] ADK narrative skipped: {last_exc}")
