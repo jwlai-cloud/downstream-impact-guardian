@@ -39,15 +39,35 @@ Cost trims that apply to any paid row:
   note Hetzner bills stopped servers unless deleted, but at $8/mo it
   hardly matters).
 
-## Recommendation
+## RESOLVED (2026-07-26) — AWS EC2 `t4g.large`, deployed
 
-1. **Hetzner CAX31** — a real 24/7 server for roughly the price of two
-   coffees; no signup fight reported, no credit gymnastics.
-2. **Oracle retry with a credit card** if $0 matters more than the
-   signup hassle.
-3. **Cloudflare Tunnel** only if no card option works — it's free but
-   fragile (human-must-keep-laptop-awake is a bad SLA for a 2-week
-   window).
+The judge-facing instance is **live on AWS**, in the maintainer's personal
+account (`us-east-1`), and the whole chain has been verified against it
+(`mode=live`, CRITICAL 24, both contracts upserted, real Qwen narrative,
+Slack alert, comment posted).
+
+- **`t4g.large`** — 2 vCPU / 8 GB arm64 + **4 GB swap**, 40 GB gp3.
+  Correcting the "don't downsize to 8 GB" note above: 8 GB *does* hold the
+  full quickstart stack for a dataset this small (4 models, ~10 entities)
+  once swap and `vm.max_map_count=262144` are set. Idle footprint is
+  ~4.3 GB of 7.6 GB. `t4g.xlarge` remains a 2-minute resize away
+  (stop → modify type → start) and the Elastic IP survives it, so no
+  secret changes are needed if it ever proves tight.
+- **~$0.067/hr ≈ $1.60/day** running, ~$0.11/day stopped (EBS only).
+  Aug 17–31 continuous ≈ **$24**, well inside the $75 ceiling.
+- **Elastic IP** so the URL survives stop/start — both repos' secrets stay
+  valid across restarts.
+- Why AWS over the cheaper Hetzner row: the account already existed, so
+  there was **no signup/ID-check risk** before the deadline, and the whole
+  bring-up (launch → harden → ingest → wire → teardown) is scriptable via
+  the CLI. Hetzner would have been ~$16 but needed a new account.
+
+Access and hardening details: [`AWS_BRINGUP.md`](AWS_BRINGUP.md).
+Judge-facing routes: [`JUDGING.md`](JUDGING.md). Credentials live in the
+maintainer's `~/dig-datahub-credentials.txt` and the Devpost private
+testing-notes field — **never in this repo**.
+
+Rows below remain valid as fallbacks if the instance is ever lost.
 4. Video+repo-only is the floor, not a goal — the offline mode already
    guarantees the Action demo works without any instance; the live
    instance is what unlocks the MCP judge path and the button UI.
