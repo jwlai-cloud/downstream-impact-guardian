@@ -3,7 +3,8 @@
 > Submission-ready. Every number here is measured, not estimated — see
 > `docs/PROGRESS.md` for provenance. Structure follows Devpost's fixed
 > section order; don't reorder. Credentials for the judge routes live in
-> the Devpost private testing-notes field, never in this repo.
+> the submission description (the form has no private free-text field), never
+> in this repo — the judge account is Reader-only by design.
 
 **Track (primary):** Agents That Do Real Work
 **Track (secondary claim, in description only):** Metadata-Aware Code
@@ -277,7 +278,7 @@ form-fill time)*
 
 **Judges: start with [`docs/JUDGING.md`](JUDGING.md)** — four routes in
 effort order, with a criterion→evidence map. Read-only credentials for the
-live catalog are in this submission's private testing-notes field.
+live catalog are published at the end of this description.
 
 - **Repo:** https://github.com/jwlai-cloud/downstream-impact-guardian
 - **Zero-setup evidence:** the [judge workbench](https://jwlai-cloud.github.io/downstream-impact-guardian/)
@@ -298,6 +299,87 @@ live catalog are in this submission's private testing-notes field.
   [`docs/blog/2026-07-23-designing-honest-blast-radius.md`](blog/2026-07-23-designing-honest-blast-radius.md).
 
 ---
+
+## Appendix — Additional info + Feedback Prize answers
+
+Paste-ready answers for the form's "Additional info" section. That section is
+judges/organizers-only **except** the three fields tagged *"Appears in project
+gallery"* (challenge category, DataHub technologies, country).
+
+| Field | Answer |
+|---|---|
+| Challenge category | **Agents That Do Real Work** (Track 2 is a fair secondary claim, but the form forces one) |
+| Public code repository | `https://github.com/jwlai-cloud/downstream-impact-guardian` |
+| URL to test functionality | `https://downstream-impact-guardian.vercel.app/` |
+| Artifacts | `https://github.com/jwlai-cloud/downstream-impact-guardian/tree/master/examples` |
+| DataHub technologies | **OSS / Core Platform**, **MCP Server**, **Agent Context Kit** — *not* Skills, *not* Analytics Agent (verified: no references anywhere in the repo) |
+| Newly created in the window | Yes |
+| Pre-existing code | None beyond standard tools. Built with Claude Code (an AI assistant, permitted). Dependencies are standard libraries: Google ADK, LiteLLM, sqlglot, dbt-core/dbt-bigquery, acryl-datahub, datahub-agent-context. |
+
+### Feedback Prize — what felt polished
+
+The **Agent Context Kit** was the standout: `build_google_adk_tools(client,
+include_mutations=False)` gave a Google ADK agent read-only
+lineage/query/schema tools in one line and worked first try, which is rare for
+a days-old integration. `datahub docker quickstart` brought the whole stack up
+on arm64 unchanged. `searchAcrossLineage` is the right shape for blast-radius
+work — multi-hop, typed entities, ownership inline. And `upsertDataContract`
+works on self-hosted OSS, which the docs don't quite tell you.
+
+### Feedback Prize — where I lost time
+
+1. **The Data Contracts guide is Cloud-framed.** It opens with "specifically
+   covers ... DataHub Cloud" and documents only `upsertDataContract`, without
+   saying whether OSS supports it. I nearly abandoned a working OSS path.
+   (The proposal *inbox* genuinely is Cloud-only; the upsert is not.)
+2. **`upsertDataContract` rejects unknown keys** rather than ignoring them, so
+   provenance had to move into a separate status/properties aspect.
+3. **dbt ingestion creates two entities per model** (dbt + warehouse sibling)
+   and *assertions attach to the dbt one* while schema lives on the warehouse
+   one. The docs describe siblings and `dbt_is_primary_sibling` but never say
+   which sibling carries which aspect; I found it by diffing GraphQL responses.
+4. **`searchAcrossLineage` caches per (urn, direction)** with no hint in the
+   docs. After seeding a new consumer the agent kept judging the stale graph —
+   a silently *shrinking* blast radius, the worst failure mode for this use
+   case. `searchFlags: {skipCache: true}` fixes it.
+5. **Quickstart auth defaults are a trap for anything public:**
+   `METADATA_SERVICE_AUTH_ENABLED=false` plus `datahub/datahub`, and
+   `user.props` is baked into the frontend image so the UI's password-reset
+   dialog cannot change the default admin.
+6. **A JAAS user is a key-only corpuser.** It logs in fine, but GMS rejects its
+   personal access tokens with a bare 401 (`Could not find entity for
+   urn:li:corpuser:judge`) until a `corpUserInfo` aspect is emitted. This cost
+   the most time because the error names authentication, not provisioning.
+
+### Feedback Prize — with unlimited engineering time
+
+**Make column-level lineage uniformly available, not just technically
+supported.** To be fair: DataHub already does this — the dbt source emits it by
+default (`include_column_lineage=True`). The problem is *coverage*, not
+capability. My precision ladder is *declared > derived > worst-case*: a
+consumer that declares `depends_on_columns` gets a factual verdict (including
+🟢 SAFE), everyone else gets an honest worst-case upper bound. The middle rung
+needs to know which columns a consumer reads — and in a real estate the
+consumers that matter are Looker dashboards and other teams' warehouse tables,
+whose platforms often emit no column lineage at all. So the rung degrades
+unevenly and the agent has to over-warn. Closing that coverage gap — plus
+bringing the contract **proposal/approval** flow to OSS so the human gate
+doesn't require Cloud — would move automated impact analysis from cautious to
+precise.
+
+### Feedback Prize — bugs / unexpected behaviour
+
+- ADK's tool-declaration builder logs `Default value is not supported in
+  function declaration schema for Google AI` once per Agent Context Kit tool
+  parameter that has a default. Harmless, but noisy, and misleading when the
+  model is Qwen via LiteLLM rather than Google AI. Suppressed on my side.
+- Live runs intermittently failed with `AttributeError: 'NoneType' object has
+  no attribute 'get'` inside the ADK → LiteLLM → DashScope path. A rerun with
+  identical configuration succeeded, so it looks like a malformed stream chunk
+  rather than configuration. Worked around with 3 retries and a labelled
+  fallback.
+- Expected `proposeDataContract` to exist per the tutorial's framing; the OSS
+  GraphQL schema rejects it as an unknown field.
 
 ## Appendix — video script notes (NOT part of the Devpost form)
 

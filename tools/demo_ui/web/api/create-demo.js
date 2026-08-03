@@ -57,21 +57,34 @@ function codeOk(given, expected) {
   return a.length === b.length && timingSafeEqual(a, b);
 }
 
+// Is the access gate switched on? Controlled by the DEMO_GATE env var so the
+// gate can be turned off without a redeploy of code. Default is ON: an absent
+// or misspelled variable must not silently expose a paid endpoint.
+function gateOn() {
+  const v = (process.env.DEMO_GATE || "").trim().toLowerCase();
+  return !["off", "false", "0", "no"].includes(v);
+}
+
 export default async function handler(req, res) {
+  // Lets the page know whether to render the code prompt at all.
+  if (req.method === "GET") return res.status(200).json({ gated: gateOn() });
   if (req.method !== "POST") return res.status(405).json({ error: "POST only" });
 
-  // Access gate. This endpoint opens real PRs and burns a paid LLM call per
-  // run, so it is fail-closed: with no code configured it serves nobody.
-  const expected = process.env.DEMO_ACCESS_CODE;
-  if (!expected) {
-    return res.status(503).json({
-      error: "Demo not configured: set the DEMO_ACCESS_CODE environment variable.",
-    });
+  // This endpoint opens real PRs and spends a paid model call per run, so when
+  // the gate is on it is fail-closed: gate on with no code set serves nobody
+  // (503) rather than defaulting to open.
+  if (gateOn()) {
+    const expected = process.env.DEMO_ACCESS_CODE;
+    if (!expected) {
+      return res.status(503).json({
+        error: "Demo gate is on but no DEMO_ACCESS_CODE is set — set it, or set DEMO_GATE=off.",
+      });
+    }
+    if (!codeOk(req.headers["x-demo-code"], expected)) {
+      return res.status(401).json({ error: "Invalid or missing access code." });
+    }
   }
-  if (!codeOk(req.headers["x-demo-code"], expected)) {
-    return res.status(401).json({ error: "Invalid or missing access code." });
-  }
-  // The gate screen probes with {verifyOnly:true} — a valid code is all it needs.
+  // The gate screen probes with {verifyOnly:true} — no PR is opened.
   if ((req.body || {}).verifyOnly) return res.status(200).json({ ok: true });
 
   const scenario = SCENARIOS[(req.body || {}).scenario];

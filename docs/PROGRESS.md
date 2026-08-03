@@ -42,17 +42,39 @@ infrastructure risk is closed: no more ephemeral tunnels, no laptop-must-stay-aw
    deliberately: with the box stopped, a re-run would fail loudly rather
    than fall back, since a configured-but-unreachable catalog must never
    silently serve fixture data as live.
-3. Fill the **Devpost form** from [`SUBMISSION.md`](SUBMISSION.md); paste the
-   judge login + read-only token into the private testing-notes field.
-4. Set a **spend cap** on the Qwen/DashScope key — every triggered run makes
+3. **Verify what column-level lineage the instance actually holds** (one query,
+   once it is up). The dbt source emits column lineage by default
+   (`include_column_lineage=True`), so the dbt-internal chain
+   `stg_orders → fct_orders → revenue_daily` probably has it — but
+   `scripts/seed_demo_consumers.py` emits only dataset-level `upstreamLineage`,
+   so the six cross-team consumers almost certainly do **not**. Confirm before
+   describing the "derived" rung anywhere:
+
+   ```bash
+   curl -s -X POST "$DATAHUB_GMS_URL/api/graphql" \
+     -H "Authorization: Bearer $DATAHUB_GMS_TOKEN" \
+     -H 'Content-Type: application/json' \
+     -d '{"query":"{ dataset(urn:\"urn:li:dataset:(urn:li:dataPlatform:dbt,agent-era.fiction_retail.revenue_daily,PROD)\") { upstreamLineage { fineGrainedLineages { upstreams downstreams } } } }"}'
+   ```
+
+   If those come back populated, the ladder's middle rung is closer than
+   "roadmap" for dbt-internal edges — worth knowing, not worth rushing before
+   the deadline.
+4. Fill the **Devpost form** from [`SUBMISSION.md`](SUBMISSION.md) — the
+   Additional-info and Feedback-Prize answers are in its appendix. Note the
+   form has **no private free-text field** for credentials, so the judge login
+   (Reader-only), read-only token and demo access code go in the public
+   description; the admin password never leaves
+   `~/dig-datahub-credentials.txt`.
+5. Set a **spend cap** on the Qwen/DashScope key — every triggered run makes
    a paid LLM call.
-5. Tag `v1` at submission freeze.
-6. **After Aug 31, at teardown:** terminate the instance, **release the
+6. Tag `v1` at submission freeze.
+7. **After Aug 31, at teardown:** terminate the instance, **release the
    Elastic IP**, delete the `dig-ec2-deploy` IAM inline policy — and
    **remove the live-catalog links** from `site/index.html` and the demo UI
    footer. AWS recycles released IPs, so leaving them in place would point
    the repo at a stranger's server.
-7. Optional: align the SUBMISSION appendix shot list to the v6 cut (~2:57).
+8. Optional: align the SUBMISSION appendix shot list to the v6 cut (~2:57).
 
 ## Earlier state (2026-07-24)
 

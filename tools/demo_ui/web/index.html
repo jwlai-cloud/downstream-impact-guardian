@@ -164,8 +164,17 @@ document.getElementById("gateForm").onsubmit = async (e) => {
     unlock(code);
   } catch { gateErr.textContent = "Network error — try again."; }
 };
+// Ask the server whether the gate is even on (DEMO_GATE). If it's off, or a
+// valid code is already remembered, don't make the visitor look at a prompt.
 const saved = sessionStorage.getItem(CODE_KEY);
-if (saved) unlock(saved);
+if (saved) {
+  unlock(saved);
+} else {
+  try {
+    const cfg = await (await fetch("/api/create-demo")).json();
+    if (cfg && cfg.gated === false) unlock("");
+  } catch { /* leave the gate up; the server is the real check anyway */ }
+}
 
 let scenario = "rename";
 document.querySelectorAll(".card").forEach(c => c.onclick = () => {
