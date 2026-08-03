@@ -47,7 +47,12 @@ infrastructure risk is closed: no more ephemeral tunnels, no laptop-must-stay-aw
 4. Set a **spend cap** on the Qwen/DashScope key — every triggered run makes
    a paid LLM call.
 5. Tag `v1` at submission freeze.
-6. Optional: align the SUBMISSION appendix shot list to the v6 cut (~2:57).
+6. **After Aug 31, at teardown:** terminate the instance, **release the
+   Elastic IP**, delete the `dig-ec2-deploy` IAM inline policy — and
+   **remove the live-catalog links** from `site/index.html` and the demo UI
+   footer. AWS recycles released IPs, so leaving them in place would point
+   the repo at a stranger's server.
+7. Optional: align the SUBMISSION appendix shot list to the v6 cut (~2:57).
 
 ## Earlier state (2026-07-24)
 
