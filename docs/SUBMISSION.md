@@ -12,7 +12,7 @@ Generation & Development
 
 ## Inspiration
 
-We're a data team, and we live in the middle of the blast zone. Upstream,
+I work on a data team, and we live in the middle of the blast zone. Upstream,
 the ingestion team ships a change: if it's a sudden schema change, our
 transformations fail loudly — annoying, but at least it pages someone. The
 worst case is quieter: a *minor logical change to a field* slips through,
@@ -22,21 +22,21 @@ contract saying they couldn't. Weeks later an analyst or a business user
 notices a number that feels wrong, and someone gets to spend days tracing
 it back — dashboard, to mart, to staging, to ingestion.
 
-And we're not innocent either: our own layer's changes break legacy
-dashboards downstream whenever we forget to tell the analytics team. Same
+And my own layer isn't innocent either: our changes break legacy dashboards
+downstream whenever someone forgets to tell the analytics team. Same
 failure, one seat over.
 
 The repo told the truth the whole time: *nothing in this repo broke.* The
 repo just couldn't see the finance team's scheduled query, the ML feature
 pipeline, or the exec dashboard reading from that table. DataHub is the
-source of truth for that cross-system picture — what we needed was an
+source of truth for that cross-system picture — what I wanted was an
 agent that cross-references it on every PR: not just schema, but columnar
 logic and semantic definition changes too.
 
 That blind spot is structural. No amount of in-repo testing fixes it,
 because the blast radius of a schema or logic change lives *across*
 systems, and the only place that cross-system picture exists is the
-metadata graph. So we built the agent that stands in the gap: it reads
+metadata graph. So I built the agent that stands in the gap: it reads
 the PR for what's *proposed*, reads DataHub for what's *real*, and
 refuses to let the two drift apart silently.
 
@@ -132,7 +132,7 @@ Two invariants make it trustworthy rather than magical:
 - **Pipeline:** Python 3.11, ~1,300 lines of core agent code, run
   entirely inside the consumer's GitHub Actions runner by a composite
   action (`action.yml`) — no hosted service anywhere. Any dbt repo
-  adopts it with one `uses:` block; our repo dogfoods its own action.
+  adopts it with one `uses:` block; this repo dogfoods its own action.
 - **DataHub integration, four distinct paths:**
   - **Agent Context Kit** (`datahub-agent-context[google-adk]`,
     `build_google_adk_tools`, read-only) gives the ADK narrative agent
@@ -150,7 +150,7 @@ Two invariants make it trustworthy rather than magical:
 - **Narrative:** Google ADK `Agent`, first-party DataHub tools,
   **provider-agnostic by repo configuration**: `gemini-*` runs ADK-native;
   any other id routes through LiteLLM against an OpenAI-compatible
-  endpoint. Our demo makes a **real Qwen call per run**
+  endpoint. The demo makes a **real Qwen call per run**
   (`qwen3.6-flash` via DashScope — ≈ $0.0006 at a typical ~2k-in/600-out
   token run on international list pricing; see README "Choosing the
   narrative LLM"), and the comment attributes the narrative to the
@@ -166,16 +166,16 @@ Two invariants make it trustworthy rather than magical:
 
 ## Challenges we ran into
 
-- **DataHub's contract-proposal inbox is Cloud-only.** We verified
+- **DataHub's contract-proposal inbox is Cloud-only.** I verified
   mid-design that `proposeDataContract` doesn't exist on self-hosted
-  OSS. Rather than fake it, we upsert the contract with an explicit
+  OSS. Rather than fake it, I upsert the contract with an explicit
   PROPOSED status aspect and made *PR merge* the approval gate — the
   human approval moved to where humans already are.
 - **Assertions live on the wrong URN.** Live verification against a
   real OSS instance showed dbt-test assertions attach to the dbt
   *sibling* URN, not the warehouse dataset URN. The client now merges
   both siblings before contract assembly.
-- **`upsertDataContract` rejects unknown keys.** Our provenance fields
+- **`upsertDataContract` rejects unknown keys.** My provenance fields
   had to move out of the upsert input into a separate status aspect
   emitted via the SDK.
 - **`dbt docs generate` silently overwrites `run_results.json`** —
@@ -186,9 +186,9 @@ Two invariants make it trustworthy rather than magical:
   `profiles.yml` defaults. Fixed by only exporting non-empty inputs and
   env-indirecting everything (no direct `${{ }}` interpolation in run
   scripts — also an injection-surface fix).
-- **Dead ends we backed out of** (documented in `docs/SPEC.md`): AWS
+- **Dead ends I backed out of** (documented in `docs/SPEC.md`): AWS
   Strands (no DataHub integration exists) and Gemini's managed
-  Antigravity agent (no `mcp`/`function_calling` support at the time we
+  Antigravity agent (no `mcp`/`function_calling` support at the time I
   checked). Verifying vendor claims before building on them saved the
   schedule twice.
 
@@ -219,7 +219,7 @@ Two invariants make it trustworthy rather than magical:
 
 ## What we learned
 
-- **The metadata graph is the only honest source of blast radius.** We
+- **The metadata graph is the only honest source of blast radius.** I
   went in planning to be clever about detection; the durable insight is
   that detection is easy and *consequence* is the hard part — and
   consequence is precisely what lineage + observed queries give you and
