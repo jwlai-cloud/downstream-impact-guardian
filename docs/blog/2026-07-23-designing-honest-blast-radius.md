@@ -380,10 +380,49 @@ physically unmergeable. Best product demo we never planned.
 better feature attached to. SAFE only exists because worst-case admitted
 what it was.
 
+## 8. Making it permanent: four hardening gotchas
+
+The throwaway tunnel in §6 dies with the laptop, so the judge-facing
+catalog moved to a small EC2 box (2 vCPU / 8 GB + 4 GB swap — enough for
+the whole quickstart stack at this dataset size, ~$1.60/day, stopped when
+idle). The interesting part wasn't the launch; it was the order of
+operations. A fresh quickstart ships `datahub/datahub` **and no API
+auth**, so the ports stayed shut until four things were true — and each
+one had a trap:
+
+1. **`user.props` is baked into the frontend image**, not host-mounted.
+   The UI's "Reset User Password" dialog targets *native* users, so it
+   won't touch the default admin. Bind-mount a replacement instead.
+2. **That mount must be readable by uid 100.** The container runs as
+   `datahub:100`, so a `chmod 600` file owned by `ubuntu` yields the
+   gloriously unhelpful `Login Failure: all modules ignored`.
+   `chown 100:101` fixes it.
+3. **Driving `docker compose` directly needs the env the CLI injects.**
+   Write a `.env` carrying the *existing*
+   `DATAHUB_TOKEN_SERVICE_SALT`/`SIGNING_KEY` — regenerate them and every
+   previously-issued token silently breaks.
+4. **A JAAS user logs in fine but is a key-only corpuser.** GMS then
+   can't hydrate the actor and rejects its tokens with a bare 401
+   (`Could not find entity for urn:li:corpuser:judge`). Emit a
+   `corpUserInfo` aspect before minting tokens for it.
+
+Only then did `METADATA_SERVICE_AUTH_ENABLED=true` get proven (anonymous
+GraphQL → 401), a Reader-role judge account get verified (write mutation →
+denied), and the ports open. The same discipline applies to the demo
+button: it opens a real PR and spends a real model call, so it sits behind
+an access code checked **server-side** — a client-only gate would be
+theatre.
+
+The lesson that generalises: *fail closed, in a provable order.* Every
+step above was verified before the thing it protected became reachable,
+and the one place I let convenience win — publishing the catalog URL
+before the box was running — is the one place a judge would have hit a
+dead link.
+
 ---
 
 *One `uses:` block in any dbt repo. No hosting. Four standing demos, all
-live-mode. Judge workbench:
+live-mode, against a permanent catalog. Judge workbench:
 [jwlai-cloud.github.io/downstream-impact-guardian](https://jwlai-cloud.github.io/downstream-impact-guardian/) ·
 one-button demo:
 [downstream-impact-guardian.vercel.app](https://downstream-impact-guardian.vercel.app/) ·
