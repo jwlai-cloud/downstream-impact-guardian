@@ -271,13 +271,23 @@ form-fill time)*
 
 ## Try it out
 
+**Judges: start with [`docs/JUDGING.md`](JUDGING.md)** — four routes in
+effort order, with a criterion→evidence map. Read-only credentials for the
+live catalog are in this submission's private testing-notes field.
+
 - **Repo:** https://github.com/jwlai-cloud/downstream-impact-guardian
-- **Watch the bot work:** open a PR from `demo/breaking-change` →
-  `master` (read access suffices — no fork needed). CI is green; the
-  guardian's comment shows what CI can't see.
-- **Bring your own agent:** point Claude/Cursor at the demo catalog via
-  the preconfigured `.mcp.json` (DataHub MCP Server) and interrogate
-  the same lineage, glossary, and PROPOSED contract.
+- **Zero-setup evidence:** the [judge workbench](https://jwlai-cloud.github.io/downstream-impact-guardian/)
+  — four verified runs, each a real PR comment, checked in.
+- **Trigger it live (one screen):** the [demo button](https://downstream-impact-guardian.vercel.app/)
+  opens a real PR against an independent dbt repo; the Action runs and the
+  agent's report renders inline. No account needed.
+- **Browse the live catalog:** a self-hosted OSS DataHub instance holds the
+  demo's reality — lineage, the `depends_on_columns` declaration, the
+  PROPOSED Data Contract the agent wrote back, and the glossary term the
+  semantic detector compares against. Read-only login in the testing notes.
+- **Bring your own agent:** point Claude/Cursor at that same catalog via
+  the preconfigured `.mcp.json` (DataHub MCP Server) and ask "who breaks if
+  `fct_orders.order_total` is renamed?"
 - **Read the design story:** the full write-up — inspiration, design
   decisions, architecture, code walkthrough, and what each demo scenario
   actually outputs — lives at

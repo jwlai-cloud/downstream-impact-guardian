@@ -85,21 +85,31 @@
     <span class="pill">offline mode = first-class</span>
   </div>
 
-  <h2>Three judge routes, in effort order</h2>
+  <h2>Four judge routes, in effort order</h2>
+  <p class="sub" style="margin-bottom:1rem">Routes 1–2 need nothing at all.
+    Routes 3–4 use read-only credentials from the Devpost testing notes. Full
+    guide, including a criterion&rarr;evidence map, in
+    <a href="https://github.com/jwlai-cloud/downstream-impact-guardian/blob/master/docs/JUDGING.md"><code>docs/JUDGING.md</code></a>.</p>
   <ol class="routes">
-    <li><b>60 seconds — this page</b><span>Read the four verified reports
+    <li><b>1 · 60 seconds — this page</b><span>Read the four verified reports
       below. Each was posted by the published action running cross-repo on
       a standing demo PR; links go to the live comments.</span></li>
-    <li><b>5 minutes — trigger it yourself</b><span>Open a PR between the
-      pre-staged branches of
-      <a href="https://github.com/jwlai-cloud/fiction-retail-dbt">fiction-retail-dbt</a>
-      (read access suffices on a public repo) and watch the real Action
-      post its verdict.</span></li>
-    <li><b>Power route — interrogate the catalog</b><span>Point your own
+    <li><b>2 · 5 minutes — trigger it live</b><span>Press the button on the
+      <a href="https://downstream-impact-guardian.vercel.app/">demo page</a>:
+      it opens a real PR against
+      <a href="https://github.com/jwlai-cloud/fiction-retail-dbt">fiction-retail-dbt</a>,
+      the real Action runs, and the agent's report renders on that same
+      page. No account needed.</span></li>
+    <li><b>3 · 15 minutes — browse the catalog</b><span>Log in to the live
+      DataHub instance (read-only) and see what the agent reads: lineage on
+      <code>fct_orders</code>, the <code>depends_on_columns</code>
+      declaration, and the PROPOSED Data Contract it wrote back.
+      Credentials in the Devpost testing notes.</span></li>
+    <li><b>4 · Power route — interrogate it yourself</b><span>Point your own
       agent at the catalog via the shipped
       <a href="https://github.com/jwlai-cloud/downstream-impact-guardian/blob/master/.mcp.json"><code>.mcp.json</code></a>
       (<code>mcp-server-datahub</code>) and ask “who breaks if fct_orders
-      drops order_total?” Connection details in the Devpost testing
+      drops order_total?” Read-only token in the Devpost testing
       notes.</span></li>
   </ol>
 

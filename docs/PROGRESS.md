@@ -2,7 +2,42 @@
 
 Running log. Read this first when resuming; update at end of every session.
 
-## Current state (2026-07-24)
+## Current state (2026-07-27)
+
+**The judge-facing DataHub is deployed and permanent.** The last piece of
+infrastructure risk is closed: no more ephemeral tunnels, no laptop-must-stay-awake.
+
+- **AWS EC2 `t4g.large`** in the maintainer's personal account, `us-east-1`,
+  with an **Elastic IP** (URL survives stop/start). ~$1.60/day running,
+  ~$0.11/day stopped. Details + the hardening record in
+  [`AWS_BRINGUP.md`](AWS_BRINGUP.md); cost rationale in
+  [`DEPLOY_OPTIONS.md`](DEPLOY_OPTIONS.md).
+- **Hardened before exposure**: default `datahub/datahub` disabled,
+  `METADATA_SERVICE_AUTH_ENABLED=true` (anonymous API → 401), a `judge`
+  account with **Reader** role (writes denied, verified), SSH restricted to
+  one IP. Ports 8080/9002 were widened to the internet only after all of it.
+- **Catalog populated**: dbt models + lineage + assertions, glossary,
+  6 cross-team consumers with ownership, the `depends_on_columns`
+  declaration, 3 observed queries.
+- **End-to-end verified against it** (PR #16 on the consumer repo):
+  `mode=live` · CRITICAL 24 · Agent Context Kit · real Qwen narrative ·
+  both contracts `upserted` · Slack alert sent · comment posted.
+- **Judge routes documented** in [`JUDGING.md`](JUDGING.md) — four routes in
+  effort order plus a criterion→evidence map. Credentials live only in the
+  maintainer's `~/dig-datahub-credentials.txt` and the Devpost private
+  testing-notes field, never in this repo.
+
+**Next, in priority order:**
+1. **Stop the instance** until ~Aug 16 to save ~$1.50/day; start it before
+   judging opens (the Elastic IP means no secret changes).
+2. Fill the **Devpost form** from [`SUBMISSION.md`](SUBMISSION.md); paste the
+   judge login + read-only token into the private testing-notes field.
+3. Set a **spend cap** on the Qwen/DashScope key — every triggered run makes
+   a paid LLM call.
+4. Tag `v1` at submission freeze.
+5. Optional: align the SUBMISSION appendix shot list to the v6 cut (~2:57).
+
+## Earlier state (2026-07-24)
 
 **Core loop: DONE, proven live, and narrated by a real LLM.** The four
 standing demo PRs on the consumer repo (`fiction-retail-dbt`, all draft) run
