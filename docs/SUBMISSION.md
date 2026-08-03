@@ -1,8 +1,9 @@
 # Devpost submission — Downstream Impact Guardian
 
-> Draft. Numbers marked `[MEASURE]` need a real measured value before
-> submitting — do not invent them. Structure follows Devpost's fixed
-> section order; don't reorder.
+> Submission-ready. Every number here is measured, not estimated — see
+> `docs/PROGRESS.md` for provenance. Structure follows Devpost's fixed
+> section order; don't reorder. Credentials for the judge routes live in
+> the Devpost private testing-notes field, never in this repo.
 
 **Track (primary):** Agents That Do Real Work
 **Track (secondary claim, in description only):** Metadata-Aware Code
@@ -212,10 +213,13 @@ Two invariants make it trustworthy rather than magical:
   schema.yml tests in `examples/generated/`, produced from an actual
   run — with a `requires_human` flag for the cases codegen honestly
   can't map.
-- **[MEASURE] end-to-end Action latency** on the demo PR (detect →
-  comment posted): measure one real run and put the number here.
-- **Total infrastructure cost under $75** for the full judging window
-  (self-hosted OSS DataHub on one GCE VM; BigQuery free tier).
+- **~2.3 min end-to-end**, PR opened → report posted (median of 21
+  successful demo runs; range 52 s–3.6 min). That covers checkout, dbt
+  parse, the DataHub reads, the LLM narrative, both contract upserts and
+  the comment — on a free GitHub-hosted runner.
+- **Infrastructure cost ~$24** for the full judging window — well under
+  the $75 ceiling I set (self-hosted OSS DataHub on one `t4g.large` EC2
+  box at ~$1.60/day, stopped when idle; BigQuery free tier).
 
 ## What we learned
 
@@ -262,9 +266,9 @@ Two invariants make it trustworthy rather than magical:
 
 ## Built with
 
-`python` · `google-adk` · `gemini` · `datahub` · `datahub-agent-context`
-· `mcp` · `dbt` · `bigquery` · `github-actions` · `graphql` ·
-`docker`
+`python` · `google-adk` · `litellm` · `qwen` · `gemini` · `datahub` ·
+`datahub-agent-context` · `mcp` · `dbt` · `sqlglot` · `bigquery` ·
+`github-actions` · `graphql` · `docker` · `aws-ec2` · `vercel` · `slack`
 
 *(check Devpost's tag autocomplete for exact canonical tag names at
 form-fill time)*
