@@ -156,7 +156,7 @@ document.getElementById("gateForm").onsubmit = async (e) => {
     });
     if (r.status === 401) { gateErr.textContent = "That code isn't right."; return; }
     if (r.status === 503) { gateErr.textContent = "The demo isn't configured yet — see the repo README."; return; }
-    if (!r.ok && r.status !== 200) { gateErr.textContent = "Couldn't verify right now — try again."; return; }
+    if (!r.ok) { gateErr.textContent = "Couldn't verify right now — try again."; return; }
     gateErr.textContent = "";
     unlock(code);
   } catch { gateErr.textContent = "Network error — try again."; }
