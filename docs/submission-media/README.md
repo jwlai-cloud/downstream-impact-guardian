@@ -41,7 +41,7 @@ the platform allows more, but the twelve above carry the story.
 
 ## Diagrams (generated, not hand-drawn)
 
-Built with [Archify](https://github.com/anthropics/skills) from the typed specs in
+Built with the Archify diagram generator from the typed specs in
 [`specs/`](specs/), each passing its showcase validation with 0 errors and 0
 warnings. The `.html` versions are **interactive** — pan, zoom, search, focus a
 node, trace a relationship — and the architecture diagram's nodes carry `SRC`
