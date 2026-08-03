@@ -29,11 +29,16 @@ follow its launch notes, then join the shared path above.
 | **No live instance** — video + repo as evidence | — | **$0** | Nothing to launch; demo PR reports + offline fixture mode + Pages judge workbench + video carry the proof | Officially fine — organizer confirmed in Slack (2026-07-13): "live hosted URL isn't required — a public GitHub repo with clear setup instructions works, and judges can evaluate from your demo video too." Drops the MCP "interrogate the catalog" judge path and live UI |
 
 All 16 GB class boxes at the big-3 clouds price out the same (~$60–70
-for 500 hrs) — the real cost lever is the vendor, not the instance
-tuning. 8 GB boxes swap under the full quickstart stack; don't downsize.
+for 500 hrs) — the vendor is one cost lever, but **instance size is the
+bigger one**: superseding this section's original advice, an **8 GB box
+does run the full quickstart stack** for a dataset this small, provided
+4 GB swap and `vm.max_map_count=262144` are configured. That halves the
+bill (see RESOLVED above). The rows below still quote 16 GB specs as
+originally surveyed; read them as upper bounds, not requirements.
 
 Cost trims that apply to any paid row:
-- **Soak later**: start Aug 16 instead of Aug 10 → ~360 hrs (−30%).
+- **Skip the soak**: start ~Aug 16 rather than Aug 10 → ~360 hrs (−30%).
+  What we actually do: keep the box **stopped** until then.
 - **Stop (don't terminate) when idle** pre-judging; keep the address
   stable (Elastic IP / static IP / Hetzner keeps IP while stopped —
   note Hetzner bills stopped servers unless deleted, but at $8/mo it

@@ -1,16 +1,16 @@
 # For judges — how to evaluate this in 5, 15, or 45 minutes
 
 Four independent routes, cheapest first. Routes 1 and 2 need **no credentials
-and no setup**. Routes 3 and 4 use a **read-only** login whose credentials are
-in the **Devpost submission's private testing-notes field** (deliberately not
-committed to this public repo).
+and no setup**. Routes 3 and 4 use **read-only credentials** — a UI login for
+route 3, an API token for route 4 — both in the **Devpost submission's private
+testing-notes field** (deliberately not committed to this public repo).
 
 | # | Route | Time | Needs |
 |---|---|---|---|
 | 1 | [Judge workbench](https://jwlai-cloud.github.io/downstream-impact-guardian/) — four verified runs, checked in | 5 min | nothing |
 | 2 | [Live demo button](https://downstream-impact-guardian.vercel.app/) — opens a real PR, agent reports inline | 5 min | nothing |
-| 3 | Live DataHub UI — browse the catalog the agent reads | 15 min | judge login (Devpost notes) |
-| 4 | Bring your own agent — point an MCP client at the same catalog | 45 min | judge API token (Devpost notes) |
+| 3 | Live DataHub UI — browse the catalog the agent reads | 15 min | read-only UI login (Devpost notes) |
+| 4 | Bring your own agent — point an MCP client at the same catalog | 45 min | read-only API token (Devpost notes) |
 
 ---
 

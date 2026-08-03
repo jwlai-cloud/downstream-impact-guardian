@@ -15,13 +15,17 @@ over-platform a demo.
 
 ## 1. Launch the instance (Console → EC2 → Launch)
 
+> **Historical plan — superseded by "Decision status" below.** What was
+> actually deployed is a **`t4g.large` (8 GB) with 4 GB swap, 40 GB gp3,
+> via the CLI**, not the console. The sizing note below was written before
+> we measured the real footprint; keep reading for the verified numbers.
+
 - **AMI**: Ubuntu Server 24.04 LTS
-- **Type**: `t4g.xlarge` (4 vCPU / 16 GB, ARM — arm64 images verified on
-  our local quickstart; ~$0.13/hr ≈ $95/mo before credits). If you
-  prefer x86: `t3.xlarge` (~$0.17/hr). **Not** `*.large` — 8 GB swaps
-  under the full stack.
+- **Type**: as-planned `t4g.xlarge` (4 vCPU / 16 GB, ~$0.13/hr); x86
+  alternative `t3.xlarge`. **Superseded:** `t4g.large` (8 GB) proved
+  sufficient with swap — see "Decision status".
 - **Key pair**: create/download one for SSH.
-- **Storage**: 60 GB gp3.
+- **Storage**: planned 60 GB gp3; 40 GB was ample in practice (18% used).
 - **Security group** (inbound) — start restricted; widen only after
   step 3 hardening (a fresh quickstart ships `datahub`/`datahub` and no
   API auth — don't publish that):
@@ -85,13 +89,17 @@ done
 
 Re-trigger a demo PR → live mode.
 
-## 5. Cost control with credits
+## 5. Cost control (actuals)
 
-- Judging window Aug 17–31 + soak from ~Aug 10: ~500 hrs × $0.13 ≈
-  **$65 on t4g.xlarge** — well inside typical credit grants.
-- **Stop** (not terminate) the instance when idle before Aug 10; with an
-  Elastic IP the address — and therefore the secrets — stay valid.
-  Stopped cost ≈ EBS pennies (+ small Elastic-IP idle fee).
+- **`t4g.large` at ~$0.067/hr ≈ $1.60/day.** Judging window Aug 17–31
+  continuous ≈ **$24**. (The earlier estimate of ~$65 assumed
+  `t4g.xlarge` plus an Aug 10 soak; neither is what we run.)
+- **Stopped since 2026-07-26**, to be started before judging opens
+  (~Aug 16). Stopped cost ≈ **$0.11/day** — 40 GB gp3 only; an Elastic IP
+  attached to a stopped instance is not charged, only an *unattached* one
+  is (~$3.60/mo), which is why teardown must release it.
+- The Elastic IP keeps the address — and therefore both repos' secrets —
+  valid across stop/start.
 - Terminate + release the Elastic IP after Aug 31.
 
 ## Decision status — CHOSEN AND DEPLOYED (2026-07-26)
