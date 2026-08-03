@@ -1,0 +1,176 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "One pull request, end to end",
+    "subtitle": "What actually happens when a dbt author proposes a breaking change \u2014 ~2.3 min median, on the consumer's own runner",
+    "output": "dig-sequence.html",
+    "quality_profile": "showcase",
+    "viewBox": [
+      980,
+      830
+    ]
+  },
+  "participants": [
+    {
+      "id": "author",
+      "type": "external",
+      "label": "dbt author",
+      "sublabel": "opens the PR"
+    },
+    {
+      "id": "gh",
+      "type": "external",
+      "label": "GitHub",
+      "sublabel": "pull_request event"
+    },
+    {
+      "id": "runner",
+      "type": "backend",
+      "label": "Action runner",
+      "sublabel": "deterministic pipeline"
+    },
+    {
+      "id": "datahub",
+      "type": "database",
+      "label": "DataHub",
+      "sublabel": "the catalog"
+    },
+    {
+      "id": "llm",
+      "type": "backend",
+      "label": "ADK agent",
+      "sublabel": "narrative only"
+    },
+    {
+      "id": "slack",
+      "type": "external",
+      "label": "Slack",
+      "sublabel": "stakeholders"
+    }
+  ],
+  "segments": [
+    {
+      "from": 156,
+      "to": 264,
+      "label": "Detect \u2014 the hypothesis"
+    },
+    {
+      "from": 268,
+      "to": 432,
+      "label": "Reality check \u2014 the catalog"
+    },
+    {
+      "from": 436,
+      "to": 544,
+      "label": "Judge, then write back"
+    },
+    {
+      "from": 548,
+      "to": 768,
+      "label": "Report to humans"
+    }
+  ],
+  "messages": [
+    {
+      "id": "m1",
+      "from": "author",
+      "to": "gh",
+      "y": 180,
+      "label": "opens a breaking PR",
+      "variant": "emphasis",
+      "note": "renames a column and redefines a metric"
+    },
+    {
+      "id": "m2",
+      "from": "gh",
+      "to": "runner",
+      "y": 236,
+      "label": "pull_request (opened / synchronize)",
+      "note": "then diffs dbt manifests, sqlglot expressions and glossary yml \u2014 3 detectors, no network"
+    },
+    {
+      "id": "m4",
+      "from": "runner",
+      "to": "datahub",
+      "y": 292,
+      "label": "who is downstream? (searchAcrossLineage)",
+      "variant": "emphasis"
+    },
+    {
+      "id": "m5",
+      "from": "datahub",
+      "to": "runner",
+      "y": 348,
+      "label": "6 consumers across 3 teams + owners",
+      "variant": "return"
+    },
+    {
+      "id": "m6",
+      "from": "datahub",
+      "to": "runner",
+      "y": 404,
+      "label": "observed queries on the changed column",
+      "variant": "return"
+    },
+    {
+      "id": "m8",
+      "from": "runner",
+      "to": "datahub",
+      "y": 460,
+      "label": "upsert Data Contract (PROPOSED)",
+      "variant": "emphasis",
+      "note": "severity + per-consumer verdicts are scored first, deterministically (48 tests, no LLM)"
+    },
+    {
+      "id": "m9",
+      "from": "runner",
+      "to": "llm",
+      "y": 516,
+      "label": "narrate these facts"
+    },
+    {
+      "id": "m10",
+      "from": "llm",
+      "to": "datahub",
+      "y": 572,
+      "label": "cross-check lineage / queries (read-only)",
+      "variant": "dashed"
+    },
+    {
+      "id": "m11",
+      "from": "llm",
+      "to": "runner",
+      "y": 628,
+      "label": "impact story + ranked actions",
+      "variant": "return"
+    },
+    {
+      "id": "m12",
+      "from": "runner",
+      "to": "gh",
+      "y": 684,
+      "label": "one idempotent comment + compat code",
+      "variant": "emphasis"
+    },
+    {
+      "id": "m13",
+      "from": "runner",
+      "to": "slack",
+      "y": 740,
+      "label": "alert on HIGH / CRITICAL only"
+    }
+  ],
+  "activations": [
+    {
+      "participant": "runner",
+      "from": 236,
+      "to": 740
+    },
+    {
+      "participant": "llm",
+      "from": 516,
+      "to": 628
+    }
+  ]
+}
