@@ -70,7 +70,7 @@ Slack alert, comment posted).
 Access and hardening details: [`AWS_BRINGUP.md`](AWS_BRINGUP.md).
 Judge-facing routes: [`JUDGING.md`](JUDGING.md). Credentials live in the
 maintainer's `~/dig-datahub-credentials.txt` and the Devpost private
-testing-notes field — **never in this repo**.
+submission description — **never in this repo**.
 
 Rows below remain valid as fallbacks if the instance is ever lost.
 4. Video+repo-only is the floor, not a goal — the offline mode already

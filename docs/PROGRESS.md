@@ -25,7 +25,7 @@ infrastructure risk is closed: no more ephemeral tunnels, no laptop-must-stay-aw
 - **Judge routes documented** in [`JUDGING.md`](JUDGING.md) — four routes in
   effort order plus a criterion→evidence map. Credentials live only in the
   maintainer's `~/dig-datahub-credentials.txt` and the Devpost private
-  testing-notes field, never in this repo.
+  submission description (the form has no private field), never in this repo.
 
 **Next, in priority order:**
 1. **Start the instance before judging opens (~Aug 16)** — it has been
@@ -139,10 +139,15 @@ Done, in order:
 - Which DEPLOY_OPTIONS.md row for the permanent instance — resolve by
   ~2026-08-10 so it soaks before the Aug 17–31 judging window (Hetzner
   recommended; soak-from-Aug-16 trims any paid row ~30%).
-- Column-level lineage (the "derived" rung of the precision ladder) is
-  unimplemented — worth it for the judging window, or leave the
-  declared/worst-case rungs as the shipped story? (Declared already
-  demonstrates the SAFE verdict live.)
+- Column-level lineage (the "derived" rung) is **unread, not unavailable** —
+  DataHub's dbt source emits it by default (`include_column_lineage=True`), but
+  `datahub_client.py` never asks for `fineGrainedLineages`, and
+  `seed_demo_consumers.py` emits dataset-level lineage only, so the six
+  cross-team consumers carry none. The real limitation is *coverage*: in a real
+  data estate the consumers that matter (Looker dashboards, other teams'
+  tables) often emit no column lineage either. Run the query in step 3 to see
+  what this instance actually holds before deciding whether to wire the rung
+  up. (Declared already demonstrates the SAFE verdict live.)
 
 ## Incident log (2026-07-22)
 

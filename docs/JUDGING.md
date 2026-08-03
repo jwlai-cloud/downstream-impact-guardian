@@ -49,10 +49,10 @@ runs and the agent's report renders **on the same page** — severity, blast
 radius with owners, the breaking queries, and the generated compatibility code.
 Takes ~3–4 minutes end to end. Demo PRs auto-close.
 
-## Route 3 — the live catalog (judge login in Devpost notes)
+## Route 3 — the live catalog (read-only login in the submission description)
 
 A self-hosted OSS DataHub instance, populated with the demo's reality. URL and
-read-only credentials are in the Devpost testing notes. Worth looking at:
+read-only credentials are in the submission description. Worth looking at:
 
 - **Lineage** on `fct_orders` — the cross-system graph: two Looker dashboards
   and three BigQuery datasets across three teams. This is the blast radius no
@@ -71,7 +71,7 @@ The judge account has the **Reader** role: browsing works, writes are denied.
 
 The repo ships a preconfigured [`.mcp.json`](../.mcp.json) for
 `mcp-server-datahub`. Point Claude Desktop / Cursor / any MCP client at the
-instance (URL + read-only token in the Devpost notes) and ask it directly:
+instance (URL + read-only token in the submission description) and ask it directly:
 
 > *"Who breaks if `fct_orders.order_total` is renamed?"*
 

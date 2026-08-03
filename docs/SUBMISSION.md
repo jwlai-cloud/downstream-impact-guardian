@@ -289,7 +289,7 @@ live catalog are published at the end of this description.
 - **Browse the live catalog:** a self-hosted OSS DataHub instance holds the
   demo's reality — lineage, the `depends_on_columns` declaration, the
   PROPOSED Data Contract the agent wrote back, and the glossary term the
-  semantic detector compares against. Read-only login in the testing notes.
+  semantic detector compares against. Read-only login in the description.
 - **Bring your own agent:** point Claude/Cursor at that same catalog via
   the preconfigured `.mcp.json` (DataHub MCP Server) and ask "who breaks if
   `fct_orders.order_total` is renamed?"
@@ -314,7 +314,7 @@ gallery"* (challenge category, DataHub technologies, country).
 | Artifacts | `https://github.com/jwlai-cloud/downstream-impact-guardian/tree/master/examples` |
 | DataHub technologies | **OSS / Core Platform**, **MCP Server**, **Agent Context Kit** — *not* Skills, *not* Analytics Agent (verified: no references anywhere in the repo) |
 | Newly created in the window | Yes |
-| Pre-existing code | None beyond standard tools. Built with Claude Code (an AI assistant, permitted). Dependencies are standard libraries: Google ADK, LiteLLM, sqlglot, dbt-core/dbt-bigquery, acryl-datahub, datahub-agent-context. |
+| Pre-existing code | None beyond standard tools. Built with Claude Code (an AI assistant, permitted). Dependencies are third-party packages: Google ADK, LiteLLM, sqlglot, dbt-core/dbt-bigquery, acryl-datahub, datahub-agent-context. |
 
 ### Feedback Prize — what felt polished
 
@@ -359,7 +359,7 @@ default (`include_column_lineage=True`). The problem is *coverage*, not
 capability. My precision ladder is *declared > derived > worst-case*: a
 consumer that declares `depends_on_columns` gets a factual verdict (including
 🟢 SAFE), everyone else gets an honest worst-case upper bound. The middle rung
-needs to know which columns a consumer reads — and in a real estate the
+needs to know which columns a consumer reads — and in a real data estate the
 consumers that matter are Looker dashboards and other teams' warehouse tables,
 whose platforms often emit no column lineage at all. So the rung degrades
 unevenly and the agent has to over-warn. Closing that coverage gap — plus
