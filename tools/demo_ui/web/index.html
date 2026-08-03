@@ -54,9 +54,40 @@
   .foot { margin-top:3rem; font-family:ui-monospace,Menlo,monospace;
     font-size:.72rem; color:var(--muted); }
   .foot a { color:var(--accent); }
+  /* access gate */
+  #gate { position:fixed; inset:0; background:var(--paper); z-index:50;
+    display:flex; align-items:center; justify-content:center; padding:1.25rem; }
+  #gate .box { max-width:34rem; }
+  #gate h2 { font-size:1.35rem; margin:.4rem 0 .5rem; font-weight:650; }
+  #gate p { color:var(--muted); margin:0 0 1.2rem; }
+  #gate form { display:flex; gap:.5rem; flex-wrap:wrap; }
+  #gate input { font:inherit; padding:.7rem .9rem; border-radius:9px; flex:1 1 14rem;
+    border:1.5px solid var(--line); background:var(--card); color:var(--ink); }
+  #gate input:focus { outline:2px solid var(--accent); outline-offset:1px; border-color:var(--accent); }
+  #gate button { font:inherit; font-weight:650; padding:.7rem 1.2rem; border-radius:9px;
+    border:none; background:var(--accent); color:#fff; cursor:pointer; }
+  #gate .err { color:var(--crit); font-size:.9rem; margin-top:.8rem; min-height:1.2em; }
+  body.locked main { display:none; }
 </style>
 </head>
-<body>
+<body class="locked">
+<div id="gate">
+  <div class="box">
+    <p class="eyebrow">Downstream Impact Guardian · live demo</p>
+    <h2>Access code required</h2>
+    <p>Pressing the button opens a real pull request and runs a real agent, so
+      this demo is gated. <strong>Judges:</strong> the code is in the
+      submission's testing-notes field. Everything else — the verified reports,
+      the code, the architecture — is public and needs no code at
+      <a href="https://jwlai-cloud.github.io/downstream-impact-guardian/">the judge workbench</a>.</p>
+    <form id="gateForm">
+      <input id="gateCode" type="password" placeholder="Access code"
+             autocomplete="off" aria-label="Access code" required>
+      <button type="submit">Unlock</button>
+    </form>
+    <div class="err" id="gateErr" role="alert"></div>
+  </div>
+</div>
 <main>
   <p class="eyebrow">Downstream Impact Guardian · live demo</p>
   <h1>Break a data pipeline. Watch the agent catch it.</h1>
@@ -102,6 +133,37 @@
 import { marked } from "https://cdn.jsdelivr.net/npm/marked@12/lib/marked.esm.js";
 import DOMPurify from "https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.es.mjs";
 
+// --- access gate. The real enforcement is server-side in /api/create-demo;
+// this only decides what the page shows, so a bypass here buys nothing.
+const CODE_KEY = "dig-demo-code";
+const gate = document.getElementById("gate");
+const gateErr = document.getElementById("gateErr");
+const unlock = (code) => {
+  sessionStorage.setItem(CODE_KEY, code);
+  gate.remove();
+  document.body.classList.remove("locked");
+};
+document.getElementById("gateForm").onsubmit = async (e) => {
+  e.preventDefault();
+  const code = document.getElementById("gateCode").value.trim();
+  if (!code) return;
+  gateErr.textContent = "Checking…";
+  try {
+    const r = await fetch("/api/create-demo", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-demo-code": code },
+      body: JSON.stringify({ verifyOnly: true }),
+    });
+    if (r.status === 401) { gateErr.textContent = "That code isn't right."; return; }
+    if (r.status === 503) { gateErr.textContent = "The demo isn't configured yet — see the repo README."; return; }
+    if (!r.ok) { gateErr.textContent = "Couldn't verify right now — try again."; return; }
+    gateErr.textContent = "";
+    unlock(code);
+  } catch { gateErr.textContent = "Network error — try again."; }
+};
+const saved = sessionStorage.getItem(CODE_KEY);
+if (saved) unlock(saved);
+
 let scenario = "rename";
 document.querySelectorAll(".card").forEach(c => c.onclick = () => {
   document.querySelectorAll(".card").forEach(x => x.classList.remove("sel"));
@@ -116,7 +178,8 @@ $("go").onclick = async () => {
   set("t1","active","Opening pull request…");
   try {
     const r = await fetch("/api/create-demo", { method:"POST",
-      headers:{"Content-Type":"application/json"},
+      headers:{"Content-Type":"application/json",
+               "x-demo-code": sessionStorage.getItem(CODE_KEY) || ""},
       body: JSON.stringify({ scenario }) });
     const j = await r.json();
     if (!r.ok) throw new Error(j.error || r.status);

@@ -28,14 +28,26 @@ infrastructure risk is closed: no more ephemeral tunnels, no laptop-must-stay-aw
   testing-notes field, never in this repo.
 
 **Next, in priority order:**
-1. **Stop the instance** until ~Aug 16 to save ~$1.50/day; start it before
-   judging opens (the Elastic IP means no secret changes).
-2. Fill the **Devpost form** from [`SUBMISSION.md`](SUBMISSION.md); paste the
+1. **Start the instance before judging opens (~Aug 16)** — it has been
+   stopped since 2026-07-26 to save ~$1.50/day; the Elastic IP means no
+   secret changes are needed. `aws ec2 start-instances --instance-ids <id>`
+   (id in the maintainer's credentials file), then allow ~4 min for the
+   stack to go healthy.
+2. **Re-trigger the four standing demo PRs once it is up**, including this
+   repo's own dogfooding draft (#5). They currently carry reports from
+   before the permanent instance existed — #5 in particular shows
+   *offline fixture mode, score 22*, which reads as inconsistent next to
+   the live `score 24` in every other artifact. A re-run replaces them
+   with live-mode reports (contracts upserted, Qwen narrative). Deferred
+   deliberately: with the box stopped, a re-run would fail loudly rather
+   than fall back, since a configured-but-unreachable catalog must never
+   silently serve fixture data as live.
+3. Fill the **Devpost form** from [`SUBMISSION.md`](SUBMISSION.md); paste the
    judge login + read-only token into the private testing-notes field.
-3. Set a **spend cap** on the Qwen/DashScope key — every triggered run makes
+4. Set a **spend cap** on the Qwen/DashScope key — every triggered run makes
    a paid LLM call.
-4. Tag `v1` at submission freeze.
-5. Optional: align the SUBMISSION appendix shot list to the v6 cut (~2:57).
+5. Tag `v1` at submission freeze.
+6. Optional: align the SUBMISSION appendix shot list to the v6 cut (~2:57).
 
 ## Earlier state (2026-07-24)
 

@@ -1,14 +1,20 @@
 # For judges — how to evaluate this in 5, 15, or 45 minutes
 
-Four independent routes, cheapest first. Routes 1 and 2 need **no credentials
-and no setup**. Routes 3 and 4 use **read-only credentials** — a UI login for
-route 3, an API token for route 4 — both in the **Devpost submission's private
-testing-notes field** (deliberately not committed to this public repo).
+Four independent routes, cheapest first. **Route 1 needs nothing at all.**
+Routes 2–4 use credentials from the **Devpost submission's private
+testing-notes field** (deliberately not committed to this public repo): a
+short access code for the demo button, a read-only UI login for the catalog,
+and a read-only API token for the MCP route.
+
+> Why the button is gated: pressing it opens a real pull request and runs a
+> real agent — including a paid model call — so it is not left open to the
+> internet. Every *other* piece of evidence (the verified reports, the code,
+> the architecture, the video) is fully public.
 
 | # | Route | Time | Needs |
 |---|---|---|---|
 | 1 | [Judge workbench](https://jwlai-cloud.github.io/downstream-impact-guardian/) — four verified runs, checked in | 5 min | nothing |
-| 2 | [Live demo button](https://downstream-impact-guardian.vercel.app/) — opens a real PR, agent reports inline | 5 min | nothing |
+| 2 | [Live demo button](https://downstream-impact-guardian.vercel.app/) — opens a real PR, agent reports inline | 5 min | access code (Devpost notes) |
 | 3 | Live DataHub UI — browse the catalog the agent reads | 15 min | read-only UI login (Devpost notes) |
 | 4 | Bring your own agent — point an MCP client at the same catalog | 45 min | read-only API token (Devpost notes) |
 
@@ -30,11 +36,11 @@ Four tabs, each a **real PR comment** the published Action posted, snapshotted:
 Each links to the live comment on the consumer repo so you can confirm nothing
 was hand-edited.
 
-## Route 2 — trigger it yourself
+## Route 2 — trigger it yourself (access code in the testing notes)
 
 <https://downstream-impact-guardian.vercel.app/>
 
-Pick a scenario, press the button. It opens a **real pull request** against
+Enter the access code once, then pick a scenario and press the button. It opens a **real pull request** against
 [an independent dbt repo](https://github.com/jwlai-cloud/fiction-retail-dbt)
 that consumes this action via a single `uses:` block. The real GitHub Action
 runs and the agent's report renders **on the same page** — severity, blast
