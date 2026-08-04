@@ -1,0 +1,42 @@
+# Compose override for the judge-facing self-hosted DataHub (see AWS_BRINGUP.md).
+# Copy to the VM as ~/dig-override.yml and bring the stack up with BOTH files
+# and the profile:
+#
+#   cd ~/.datahub/quickstart
+#   docker compose --profile quickstart \
+#     -f docker-compose.yml -f ~/dig-override.yml --env-file .env -p datahub up -d
+#
+# The --profile flag is not optional: every service except kafka-broker sits
+# behind the `quickstart` profile, so a bare `docker compose up -d` starts
+# kafka, exits 0, and looks successful while nothing serves.
+#
+# `restart: unless-stopped` is declared here, not just applied to live
+# containers with `docker update`, so it survives the stack being recreated --
+# a compose down/up or a DATAHUB_VERSION bump would otherwise silently drop it,
+# and the next EC2 stop/start would come back with nothing running.
+# "unless-stopped" rather than "always" on purpose: an EC2 stop is an
+# ungraceful kill so containers return on boot, while a deliberate
+# `docker stop` stays down instead of fighting the operator.
+# system-update-quickstart is intentionally absent -- it is a one-shot
+# migration job that exits 0, and restarting it on every boot is pointless.
+services:
+  frontend-quickstart:
+    restart: unless-stopped
+    # Replaces the default datahub/datahub login. Must be chown 100:101 and
+    # chmod 640 on the host -- the container runs as uid 100, and a root- or
+    # ubuntu-owned 600 file yields "Login Failure: all modules ignored".
+    volumes:
+      - /home/ubuntu/user.props:/datahub-frontend/conf/user.props:ro
+  datahub-gms-quickstart:
+    restart: unless-stopped
+    # Rejects anonymous GraphQL with 401; required for the read-only judge token.
+    environment:
+      METADATA_SERVICE_AUTH_ENABLED: "true"
+  datahub-actions-quickstart:
+    restart: unless-stopped
+  kafka-broker:
+    restart: unless-stopped
+  mysql:
+    restart: unless-stopped
+  opensearch:
+    restart: unless-stopped
