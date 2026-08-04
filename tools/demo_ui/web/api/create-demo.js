@@ -18,6 +18,10 @@ const SCENARIOS = {
 };
 const MAX_OPEN_RUNS = 5;
 const STALE_MINUTES = 45;
+// Total runs allowed per rolling 24h, independent of how many are open at once.
+// The access code is published to judges, so it is a courtesy gate, not a
+// bearer secret -- this is the quota that actually bounds cost and PR churn.
+const MAX_RUNS_PER_DAY = Number(process.env.DEMO_MAX_RUNS_PER_DAY || 40);
 
 const OWNER = process.env.GH_OWNER || "jwlai-cloud";
 const REPO = process.env.GH_REPO || "fiction-retail-dbt";
@@ -35,6 +39,17 @@ async function gh(path, opts = {}) {
   });
   if (!res.ok) throw new Error(`GitHub ${path} -> ${res.status}: ${await res.text()}`);
   return res.status === 204 ? null : res.json();
+}
+
+// Rolling-24h count of demo runs. GitHub is the durable store: every run
+// leaves a demo/run-* branch on a PR, so a stateless function can still
+// enforce a real quota without any database.
+async function runsInLastDay() {
+  const since = Date.now() - 24 * 60 * 60 * 1000;
+  const prs = await gh(`/pulls?state=all&sort=created&direction=desc&per_page=100`);
+  return prs.filter(
+    (p) => p.head.ref.startsWith("demo/run-") && new Date(p.created_at).getTime() >= since
+  ).length;
 }
 
 async function cleanupStale() {
@@ -57,21 +72,34 @@ function codeOk(given, expected) {
   return a.length === b.length && timingSafeEqual(a, b);
 }
 
+// Is the access gate switched on? Controlled by the DEMO_GATE env var so the
+// gate can be turned off without a redeploy of code. Default is ON: an absent
+// or misspelled variable must not silently expose a paid endpoint.
+function gateOn() {
+  const v = (process.env.DEMO_GATE || "").trim().toLowerCase();
+  return !["off", "false", "0", "no"].includes(v);
+}
+
 export default async function handler(req, res) {
+  // Lets the page know whether to render the code prompt at all.
+  if (req.method === "GET") return res.status(200).json({ gated: gateOn() });
   if (req.method !== "POST") return res.status(405).json({ error: "POST only" });
 
-  // Access gate. This endpoint opens real PRs and burns a paid LLM call per
-  // run, so it is fail-closed: with no code configured it serves nobody.
-  const expected = process.env.DEMO_ACCESS_CODE;
-  if (!expected) {
-    return res.status(503).json({
-      error: "Demo not configured: set the DEMO_ACCESS_CODE environment variable.",
-    });
+  // This endpoint opens real PRs and spends a paid model call per run, so when
+  // the gate is on it is fail-closed: gate on with no code set serves nobody
+  // (503) rather than defaulting to open.
+  if (gateOn()) {
+    const expected = process.env.DEMO_ACCESS_CODE;
+    if (!expected) {
+      return res.status(503).json({
+        error: "Demo gate is on but no DEMO_ACCESS_CODE is set — set it, or set DEMO_GATE=off.",
+      });
+    }
+    if (!codeOk(req.headers["x-demo-code"], expected)) {
+      return res.status(401).json({ error: "Invalid or missing access code." });
+    }
   }
-  if (!codeOk(req.headers["x-demo-code"], expected)) {
-    return res.status(401).json({ error: "Invalid or missing access code." });
-  }
-  // The gate screen probes with {verifyOnly:true} — a valid code is all it needs.
+  // The gate screen probes with {verifyOnly:true} — no PR is opened.
   if ((req.body || {}).verifyOnly) return res.status(200).json({ ok: true });
 
   const scenario = SCENARIOS[(req.body || {}).scenario];
@@ -81,6 +109,14 @@ export default async function handler(req, res) {
     const active = await cleanupStale();
     if (active >= MAX_OPEN_RUNS) {
       return res.status(429).json({ error: "Too many demo runs in flight — try again in a few minutes." });
+    }
+    const today = await runsInLastDay();
+    if (today >= MAX_RUNS_PER_DAY) {
+      return res.status(429).json({
+        error:
+          "The demo has hit its daily run limit. The four verified reports at " +
+          "jwlai-cloud.github.io/downstream-impact-guardian need no setup and show the same output.",
+      });
     }
     const src = await gh(`/git/ref/heads/${encodeURIComponent(scenario.branch)}`);
     const branch = `demo/run-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;

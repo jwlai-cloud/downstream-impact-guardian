@@ -1,22 +1,24 @@
 # For judges — how to evaluate this in 5, 15, or 45 minutes
 
 Four independent routes, cheapest first. **Route 1 needs nothing at all.**
-Routes 2–4 use credentials from the **Devpost submission's private
-testing-notes field** (deliberately not committed to this public repo): a
-short access code for the demo button, a read-only UI login for the catalog,
-and a read-only API token for the MCP route.
+Routes 2–4 use credentials published in the **submission description** — a
+short access code for the demo button (when the gate is on), a read-only UI
+login for the catalog, and a read-only API token for the MCP route. They are
+kept out of this repo so they can be rotated without a commit.
 
-> Why the button is gated: pressing it opens a real pull request and runs a
-> real agent — including a paid model call — so it is not left open to the
-> internet. Every *other* piece of evidence (the verified reports, the code,
-> the architecture, the video) is fully public.
+> Those credentials are deliberately low-stakes: the catalog account holds the
+> **Reader** role (writes are denied — verified) against a catalog of
+> fictional demo data. Only the demo button is rate-limited and optionally
+> gated, because pressing it opens a real pull request and spends a real model
+> call. Every other piece of evidence — the verified reports, the code, the
+> architecture, the video — is fully public and needs nothing.
 
 | # | Route | Time | Needs |
 |---|---|---|---|
 | 1 | [Judge workbench](https://jwlai-cloud.github.io/downstream-impact-guardian/) — four verified runs, checked in | 5 min | nothing |
-| 2 | [Live demo button](https://downstream-impact-guardian.vercel.app/) — opens a real PR, agent reports inline | 5 min | access code (Devpost notes) |
-| 3 | Live DataHub UI — browse the catalog the agent reads | 15 min | read-only UI login (Devpost notes) |
-| 4 | Bring your own agent — point an MCP client at the same catalog | 45 min | read-only API token (Devpost notes) |
+| 2 | [Live demo button](https://downstream-impact-guardian.vercel.app/) — opens a real PR, agent reports inline | 5 min | access code, if the gate is on |
+| 3 | Live DataHub UI — browse the catalog the agent reads | 15 min | read-only UI login (in the description) |
+| 4 | Bring your own agent — point an MCP client at the same catalog | 45 min | read-only API token (in the description) |
 
 ---
 
@@ -36,7 +38,7 @@ Four tabs, each a **real PR comment** the published Action posted, snapshotted:
 Each links to the live comment on the consumer repo so you can confirm nothing
 was hand-edited.
 
-## Route 2 — trigger it yourself (access code in the testing notes)
+## Route 2 — trigger it yourself (access code in the submission description)
 
 <https://downstream-impact-guardian.vercel.app/>
 
@@ -47,10 +49,10 @@ runs and the agent's report renders **on the same page** — severity, blast
 radius with owners, the breaking queries, and the generated compatibility code.
 Takes ~3–4 minutes end to end. Demo PRs auto-close.
 
-## Route 3 — the live catalog (judge login in Devpost notes)
+## Route 3 — the live catalog (read-only login in the submission description)
 
 A self-hosted OSS DataHub instance, populated with the demo's reality. URL and
-read-only credentials are in the Devpost testing notes. Worth looking at:
+read-only credentials are in the submission description. Worth looking at:
 
 - **Lineage** on `fct_orders` — the cross-system graph: two Looker dashboards
   and three BigQuery datasets across three teams. This is the blast radius no
@@ -69,7 +71,7 @@ The judge account has the **Reader** role: browsing works, writes are denied.
 
 The repo ships a preconfigured [`.mcp.json`](../.mcp.json) for
 `mcp-server-datahub`. Point Claude Desktop / Cursor / any MCP client at the
-instance (URL + read-only token in the Devpost notes) and ask it directly:
+instance (URL + read-only token in the submission description) and ask it directly:
 
 > *"Who breaks if `fct_orders.order_total` is renamed?"*
 

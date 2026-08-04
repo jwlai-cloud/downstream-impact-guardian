@@ -25,7 +25,7 @@ infrastructure risk is closed: no more ephemeral tunnels, no laptop-must-stay-aw
 - **Judge routes documented** in [`JUDGING.md`](JUDGING.md) — four routes in
   effort order plus a criterion→evidence map. Credentials live only in the
   maintainer's `~/dig-datahub-credentials.txt` and the Devpost private
-  testing-notes field, never in this repo.
+  submission description (the form has no private field), never in this repo.
 
 **Next, in priority order:**
 1. **Start the instance before judging opens (~Aug 16)** — it has been
@@ -42,17 +42,39 @@ infrastructure risk is closed: no more ephemeral tunnels, no laptop-must-stay-aw
    deliberately: with the box stopped, a re-run would fail loudly rather
    than fall back, since a configured-but-unreachable catalog must never
    silently serve fixture data as live.
-3. Fill the **Devpost form** from [`SUBMISSION.md`](SUBMISSION.md); paste the
-   judge login + read-only token into the private testing-notes field.
-4. Set a **spend cap** on the Qwen/DashScope key — every triggered run makes
+3. **Verify what column-level lineage the instance actually holds** (one query,
+   once it is up). The dbt source emits column lineage by default
+   (`include_column_lineage=True`), so the dbt-internal chain
+   `stg_orders → fct_orders → revenue_daily` probably has it — but
+   `scripts/seed_demo_consumers.py` emits only dataset-level `upstreamLineage`,
+   so the six cross-team consumers almost certainly do **not**. Confirm before
+   describing the "derived" rung anywhere:
+
+   ```bash
+   curl -s -X POST "$DATAHUB_GMS_URL/api/graphql" \
+     -H "Authorization: Bearer $DATAHUB_GMS_TOKEN" \
+     -H 'Content-Type: application/json' \
+     -d '{"query":"{ dataset(urn:\"urn:li:dataset:(urn:li:dataPlatform:dbt,agent-era.fiction_retail.revenue_daily,PROD)\") { upstreamLineage { fineGrainedLineages { upstreams downstreams } } } }"}'
+   ```
+
+   If those come back populated, the ladder's middle rung is closer than
+   "roadmap" for dbt-internal edges — worth knowing, not worth rushing before
+   the deadline.
+4. Fill the **Devpost form** from [`SUBMISSION.md`](SUBMISSION.md) — the
+   Additional-info and Feedback-Prize answers are in its appendix. Note the
+   form has **no private free-text field** for credentials, so the judge login
+   (Reader-only), read-only token and demo access code go in the public
+   description; the admin password never leaves
+   `~/dig-datahub-credentials.txt`.
+5. Set a **spend cap** on the Qwen/DashScope key — every triggered run makes
    a paid LLM call.
-5. Tag `v1` at submission freeze.
-6. **After Aug 31, at teardown:** terminate the instance, **release the
+6. Tag `v1` at submission freeze.
+7. **After Aug 31, at teardown:** terminate the instance, **release the
    Elastic IP**, delete the `dig-ec2-deploy` IAM inline policy — and
    **remove the live-catalog links** from `site/index.html` and the demo UI
    footer. AWS recycles released IPs, so leaving them in place would point
    the repo at a stranger's server.
-7. Optional: align the SUBMISSION appendix shot list to the v6 cut (~2:57).
+8. Optional: align the SUBMISSION appendix shot list to the v6 cut (~2:57).
 
 ## Earlier state (2026-07-24)
 
@@ -117,10 +139,15 @@ Done, in order:
 - Which DEPLOY_OPTIONS.md row for the permanent instance — resolve by
   ~2026-08-10 so it soaks before the Aug 17–31 judging window (Hetzner
   recommended; soak-from-Aug-16 trims any paid row ~30%).
-- Column-level lineage (the "derived" rung of the precision ladder) is
-  unimplemented — worth it for the judging window, or leave the
-  declared/worst-case rungs as the shipped story? (Declared already
-  demonstrates the SAFE verdict live.)
+- Column-level lineage (the "derived" rung) is **unread, not unavailable** —
+  DataHub's dbt source emits it by default (`include_column_lineage=True`), but
+  `datahub_client.py` never asks for `fineGrainedLineages`, and
+  `seed_demo_consumers.py` emits dataset-level lineage only, so the six
+  cross-team consumers carry none. The real limitation is *coverage*: in a real
+  data estate the consumers that matter (Looker dashboards, other teams'
+  tables) often emit no column lineage either. Run the query in step 3 to see
+  what this instance actually holds before deciding whether to wire the rung
+  up. (Declared already demonstrates the SAFE verdict live.)
 
 ## Incident log (2026-07-22)
 

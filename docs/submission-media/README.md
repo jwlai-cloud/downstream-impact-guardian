@@ -10,8 +10,8 @@ no mockups presented as live.
 - **Repo:** https://github.com/jwlai-cloud/downstream-impact-guardian
 - **Live demo (one-screen):** https://downstream-impact-guardian.vercel.app/
 - **Judge workbench (zero-credential):** https://jwlai-cloud.github.io/downstream-impact-guardian/
-- **Live DataHub catalog:** URL + read-only judge login are in the Devpost
-  private testing-notes field (never committed here)
+- **Live DataHub catalog:** URL + read-only judge login are published in the
+  submission description (kept out of this repo so they can be rotated)
 - **Interactive engineering walkthrough:** https://claude.ai/code/artifact/c578039e-bce6-4330-8396-cb48b739e7c6
 - **Demo video:** `captures/video/dig-demo-v6.mp4` (~2:57)
 - **Diagrams:** [`DIAGRAMS.md`](DIAGRAMS.md) — architecture · agent topology · sequence

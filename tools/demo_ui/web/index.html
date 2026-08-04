@@ -77,7 +77,7 @@
     <h2>Access code required</h2>
     <p>Pressing the button opens a real pull request and runs a real agent, so
       this demo is gated. <strong>Judges:</strong> the code is in the
-      submission's testing-notes field. Everything else — the verified reports,
+      submission description. Everything else — the verified reports,
       the code, the architecture — is public and needs no code at
       <a href="https://jwlai-cloud.github.io/downstream-impact-guardian/">the judge workbench</a>.</p>
     <form id="gateForm">
@@ -127,7 +127,7 @@
 
   <p class="foot">The catalog this reads:
     <a href="http://3.210.6.91:9002">live DataHub</a> (read-only login in the
-    submission's testing notes; live during judging) ·
+    submission description; live during judging) ·
     Demo PRs auto-close after 45 min ·
     <a href="https://github.com/jwlai-cloud/downstream-impact-guardian">how it works</a> ·
     never ingests hypothetical state</p>
@@ -164,8 +164,17 @@ document.getElementById("gateForm").onsubmit = async (e) => {
     unlock(code);
   } catch { gateErr.textContent = "Network error — try again."; }
 };
+// Ask the server whether the gate is even on (DEMO_GATE). If it's off, or a
+// valid code is already remembered, don't make the visitor look at a prompt.
 const saved = sessionStorage.getItem(CODE_KEY);
-if (saved) unlock(saved);
+if (saved) {
+  unlock(saved);
+} else {
+  try {
+    const cfg = await (await fetch("/api/create-demo")).json();
+    if (cfg && cfg.gated === false) unlock("");
+  } catch { /* leave the gate up; the server is the real check anyway */ }
+}
 
 let scenario = "rename";
 document.querySelectorAll(".card").forEach(c => c.onclick = () => {
