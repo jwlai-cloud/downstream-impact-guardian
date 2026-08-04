@@ -52,6 +52,8 @@
   #report code { background:var(--code); padding:.05em .3em; border-radius:4px; }
   .err { color:var(--crit); margin-top:1rem; }
   .err a { color:var(--crit); font-weight:650; }
+  .wait { color:var(--muted); font-size:.88rem; margin:.7rem 0 0; }
+  #elapsed { font-family:ui-monospace,Menlo,monospace; color:var(--accent); }
   .foot { margin-top:3rem; font-family:ui-monospace,Menlo,monospace;
     font-size:.72rem; color:var(--muted); }
   .foot a { color:var(--accent); }
@@ -123,6 +125,9 @@
     <li id="t2">Guardian Action running…</li>
     <li id="t3">Report posted</li>
   </ol>
+  <p class="wait" id="wait" hidden>A real Action runner is booting, installing
+  dbt, diffing the manifest and querying DataHub lineage — it usually takes
+  <strong>2–3 minutes</strong>. <span id="elapsed"></span></p>
 
   <article id="report"></article>
 
@@ -186,8 +191,24 @@ document.querySelectorAll(".card").forEach(c => c.onclick = () => {
 const $ = id => document.getElementById(id);
 const set = (id, cls, html) => { const e=$(id); e.className=cls; if(html) e.innerHTML=html; };
 
+// A ticking clock is the difference between "working" and "hung". Runs from
+// the moment the button is pressed until the report lands.
+let clock = null;
+function startClock(t0) {
+  const tick = () => {
+    const s = Math.floor((Date.now() - t0) / 1000);
+    $("elapsed").textContent =
+      `${String((s / 60) | 0).padStart(2, "0")}:${String(s % 60).padStart(2, "0")} elapsed`;
+  };
+  tick();
+  clock = setInterval(tick, 1000);
+}
+function stopClock() { if (clock) { clearInterval(clock); clock = null; } }
+
 $("go").onclick = async () => {
   $("go").disabled = true; $("err").hidden = true; $("tl").hidden = false;
+  $("wait").hidden = false;
+  stopClock(); startClock(Date.now());
   set("t1","active","Opening pull request…");
   try {
     const r = await fetch("/api/create-demo", { method:"POST",
@@ -200,6 +221,7 @@ $("go").onclick = async () => {
     set("t2","active","Guardian Action running…");
     poll(j.number, j.branch, Date.now());
   } catch(e) {
+    stopClock(); $("wait").hidden = true;
     const box = $("err");
     // textContent, not innerHTML: the message is server-supplied.
     box.textContent = (e.fallback ? "" : "Could not open the demo PR: ") + e.message + " ";
@@ -213,20 +235,33 @@ $("go").onclick = async () => {
   }
 };
 
+const esc = s => String(s).replace(/[&<>"]/g, c =>
+  ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;" }[c]));
+
 async function poll(pr, branch, t0) {
-  if (Date.now() - t0 > 5*60*1000) {
-    set("t2","","Timed out — open the PR link above to check directly.");
+  if (Date.now() - t0 > 8*60*1000) {
+    stopClock(); $("wait").hidden = true;
+    set("t2","","Taking longer than expected — open the PR link above to check directly.");
     $("go").disabled = false; return;
   }
   try {
     const r = await fetch(`/api/status?pr=${pr}&branch=${encodeURIComponent(branch)}`);
     const j = await r.json();
     const run = (j.checks || []).find(c => c.name === "guardian") || (j.checks || [])[0];
-    if (run) set("t2", run.status === "completed" ? "done" : "active",
-      `Guardian Action: ${run.status}${run.conclusion ? " ("+run.conclusion+")" : ""}` +
-      (run.url ? ` — <a href="${run.url}" target="_blank">logs</a>` : ""));
+    if (run) {
+      // The step name is the runner's own words for what it is doing right now
+      // -- that is what makes a 3-minute wait legible instead of dead air.
+      const s = j.step;
+      const detail = s
+        ? `${esc(s.name)}${s.failed ? " — failed" : ""} <small>(step ${s.done}/${s.total})</small>`
+        : (run.status === "queued" ? "waiting for a runner…" : "starting…");
+      set("t2", run.status === "completed" ? "done" : "active",
+        `Guardian Action — ${detail}` +
+        (run.url ? ` · <a href="${run.url}" target="_blank" rel="noopener">live logs</a>` : ""));
+    }
     if (j.comment) {
-      set("t3","done",`Report posted — <a href="${j.commentUrl}" target="_blank">view on GitHub</a>`);
+      stopClock(); $("wait").hidden = true;
+      set("t3","done",`Report posted — <a href="${j.commentUrl}" target="_blank" rel="noopener">view on GitHub</a>`);
       const rep = $("report");
       rep.style.display = "block";
       rep.innerHTML = DOMPurify.sanitize(marked.parse(j.comment));
