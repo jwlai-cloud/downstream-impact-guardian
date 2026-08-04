@@ -49,6 +49,11 @@ runs and the agent's report renders **on the same page** — severity, blast
 radius with owners, the breaking queries, and the generated compatibility code.
 Takes ~3–4 minutes end to end. Demo PRs auto-close.
 
+The button is capped at 5 concurrent runs and 40 runs per rolling 24 hours,
+because each press opens a real PR and spends a real model call. If you hit
+either cap the page says so and links straight to Route 1, which shows the
+same output with nothing to set up.
+
 ## Route 3 — the live catalog (read-only login in the submission description)
 
 A self-hosted OSS DataHub instance, populated with the demo's reality. URL and

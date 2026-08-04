@@ -108,14 +108,20 @@ export default async function handler(req, res) {
   try {
     const active = await cleanupStale();
     if (active >= MAX_OPEN_RUNS) {
-      return res.status(429).json({ error: "Too many demo runs in flight — try again in a few minutes." });
+      return res.status(429).json({
+        error: "Too many demo runs in flight — try again in a few minutes.",
+        fallback: "https://jwlai-cloud.github.io/downstream-impact-guardian/",
+        fallbackLabel: "Or see the four verified reports now →",
+      });
     }
     const today = await runsInLastDay();
     if (today >= MAX_RUNS_PER_DAY) {
       return res.status(429).json({
-        error:
-          "The demo has hit its daily run limit. The four verified reports at " +
-          "jwlai-cloud.github.io/downstream-impact-guardian need no setup and show the same output.",
+        error: "The demo has hit its daily run limit.",
+        // The UI turns this into a real link, so the visitor still has
+        // somewhere useful to go instead of a dead end.
+        fallback: "https://jwlai-cloud.github.io/downstream-impact-guardian/",
+        fallbackLabel: "See the four verified reports instead →",
       });
     }
     const src = await gh(`/git/ref/heads/${encodeURIComponent(scenario.branch)}`);

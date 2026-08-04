@@ -51,6 +51,7 @@
     overflow-x:auto; font-size:.82rem; }
   #report code { background:var(--code); padding:.05em .3em; border-radius:4px; }
   .err { color:var(--crit); margin-top:1rem; }
+  .err a { color:var(--crit); font-weight:650; }
   .foot { margin-top:3rem; font-family:ui-monospace,Menlo,monospace;
     font-size:.72rem; color:var(--muted); }
   .foot a { color:var(--accent); }
@@ -194,13 +195,21 @@ $("go").onclick = async () => {
                "x-demo-code": sessionStorage.getItem(CODE_KEY) || ""},
       body: JSON.stringify({ scenario }) });
     const j = await r.json();
-    if (!r.ok) throw new Error(j.error || r.status);
+    if (!r.ok) throw Object.assign(new Error(j.error || r.status), j);
     set("t1","done",`PR opened: <a href="${j.url}" target="_blank">#${j.number}</a>`);
     set("t2","active","Guardian Action running…");
     poll(j.number, j.branch, Date.now());
   } catch(e) {
-    $("err").textContent = "Could not open the demo PR: " + e.message;
-    $("err").hidden = false; $("go").disabled = false;
+    const box = $("err");
+    // textContent, not innerHTML: the message is server-supplied.
+    box.textContent = (e.fallback ? "" : "Could not open the demo PR: ") + e.message + " ";
+    if (e.fallback) {
+      const a = document.createElement("a");
+      a.href = e.fallback; a.target = "_blank"; a.rel = "noopener";
+      a.textContent = e.fallbackLabel || "See the verified reports →";
+      box.appendChild(a);
+    }
+    box.hidden = false; $("go").disabled = false;
   }
 };
 
