@@ -16,6 +16,45 @@ no mockups presented as live.
 - **Demo video:** `captures/video/dig-demo-v6.mp4` (~2:57)
 - **Diagrams:** [`DIAGRAMS.md`](DIAGRAMS.md) — architecture · agent topology · sequence
 
+## Upload order for the Devpost gallery
+
+Devpost shows the first image as the card thumbnail, so lead with the cover.
+
+| # | File | Why it earns the slot |
+|---|---|---|
+| 1 | `00-cover.png` | Thumbnail — problem + pipeline at a glance (16:9) |
+| 2 | `pr1-comment-header-hl.png` | The verdict in situ: CRITICAL (24) on a real PR |
+| 3 | `pr1-blast-radius-hl.png` | The differentiator — impact level **and** who to notify |
+| 4 | `01-architecture.png` | Hypothesis vs reality, one frame |
+| 5 | `dh-lineage-downstream.png` | Proof the blast radius comes from DataHub |
+| 6 | `dh-contract.png` | The PROPOSED contract the agent wrote back |
+| 7 | `02-sequence.png` | The handshake, step by step |
+| 8 | `pr1-compat.png` | Generated, mergeable compatibility code |
+| 9 | `slack-real.png` | The real Slack alert (proof, not a mockup) |
+| 10 | `dh-properties-hl.png` | `depends_on_columns` live in the catalog |
+| 11 | `03-topology.png` | Deterministic core vs the one narrating agent |
+| 12 | `00-overview.png` | Full one-pager, for anyone who wants everything |
+
+Remaining files (`joblog-b3.png`, `pr1-queries-hl.png`, `pr5-qwen-narrative-hl.png`,
+`slide-arch.png`, `slide-ladder.png`) are supporting evidence — worth attaching if
+the platform allows more, but the twelve above carry the story.
+
+## Diagrams (generated, not hand-drawn)
+
+Built with the Archify diagram generator from the typed specs in
+[`specs/`](specs/), each passing its showcase validation with 0 errors and 0
+warnings. The `.html` versions are **interactive** — pan, zoom, search, focus a
+node, trace a relationship — and the architecture diagram's nodes carry `SRC`
+badges linking to the real functions they represent.
+
+| Diagram | Interactive | Image |
+|---|---|---|
+| System architecture | [`dig-architecture.html`](dig-architecture.html) | `01-architecture.png` |
+| Sequence (one PR, end to end) | [`dig-sequence.html`](dig-sequence.html) | `02-sequence.png` |
+| Agent topology | [`dig-topology.html`](dig-topology.html) | `03-topology.png` |
+
+`DIAGRAMS.md` keeps the same three as inline Mermaid, for reading on GitHub.
+
 ## Screenshots
 
 | File | What it shows |

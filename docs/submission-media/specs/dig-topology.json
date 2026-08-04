@@ -1,0 +1,137 @@
+{
+  "schema_version": 1,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "Agent topology \u2014 a deterministic core with one narrating agent",
+    "subtitle": "Flat on purpose: the pipeline owns every judgment; the LLM writes prose and cross-checks. It never scores and never authors merged code.",
+    "output": "dig-topology.html",
+    "quality_profile": "showcase"
+  },
+  "lanes": [
+    {
+      "id": "pipeline",
+      "label": "Deterministic pipeline \u00b7 main.py"
+    },
+    {
+      "id": "llm",
+      "label": "LLM layer \u00b7 narrative only"
+    },
+    {
+      "id": "catalog",
+      "label": "DataHub"
+    }
+  ],
+  "phases": [
+    {
+      "id": "p1",
+      "label": "Detect",
+      "fromCol": 0,
+      "toCol": 1
+    },
+    {
+      "id": "p2",
+      "label": "Judge",
+      "fromCol": 2,
+      "toCol": 2,
+      "variant": "emphasis"
+    },
+    {
+      "id": "p3",
+      "label": "Act",
+      "fromCol": 3,
+      "toCol": 4
+    }
+  ],
+  "mainPath": [
+    "detect",
+    "assess",
+    "writeback"
+  ],
+  "nodes": [
+    {
+      "id": "detect",
+      "lane": "pipeline",
+      "col": 0,
+      "type": "backend",
+      "label": "detect drift"
+    },
+    {
+      "id": "assess",
+      "lane": "pipeline",
+      "col": 2,
+      "type": "backend",
+      "label": "assess impact"
+    },
+    {
+      "id": "writeback",
+      "lane": "pipeline",
+      "col": 4,
+      "type": "backend",
+      "label": "write back"
+    },
+    {
+      "id": "agent",
+      "lane": "llm",
+      "col": 3,
+      "type": "backend",
+      "label": "ADK agent"
+    },
+    {
+      "id": "graph",
+      "lane": "catalog",
+      "col": 2,
+      "type": "database",
+      "label": "DataHub"
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from": "detect",
+      "to": "assess"
+    },
+    {
+      "id": "e2",
+      "from": "graph",
+      "to": "assess",
+      "label": "who consumes it",
+      "variant": "emphasis"
+    },
+    {
+      "id": "e3",
+      "from": "assess",
+      "to": "agent",
+      "label": "facts"
+    },
+    {
+      "id": "e4",
+      "from": "agent",
+      "to": "writeback",
+      "label": "prose"
+    },
+    {
+      "id": "e5",
+      "from": "assess",
+      "to": "writeback",
+      "label": "verdict + code"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "violet",
+      "title": "Why flat, not multi-agent",
+      "items": [
+        "Every judgment is a pure function of detected facts, so it is testable",
+        "One model call per run keeps latency and cost predictable"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "If the model is unavailable",
+      "items": [
+        "3 retries, then a labelled template summary",
+        "The facts, tables and generated code are unaffected \u2014 they never came from the LLM"
+      ]
+    }
+  ]
+}

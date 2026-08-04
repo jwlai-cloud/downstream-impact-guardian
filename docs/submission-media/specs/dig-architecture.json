@@ -1,0 +1,283 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Downstream Impact Guardian",
+    "subtitle": "The pull request is a hypothesis; DataHub is reality. The agent cross-references them on every PR.",
+    "output": "dig-architecture.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/jwlai-cloud/downstream-impact-guardian",
+      "revision": "9096435f4536723545f89f581126b6adfe7693d8"
+    }
+  },
+  "layout": {
+    "mode": "grid",
+    "cols": 5,
+    "gapX": 90,
+    "gapY": 70,
+    "cellW": 210,
+    "cellH": 96
+  },
+  "components": [
+    {
+      "id": "pr",
+      "type": "external",
+      "label": "Pull request",
+      "sublabel": "dbt + glossary diff",
+      "tag": "hypothesis",
+      "row": 1,
+      "col": 0,
+      "size": [
+        196,
+        76
+      ]
+    },
+    {
+      "id": "detect",
+      "type": "backend",
+      "label": "Detect drift",
+      "sublabel": "manifest \u00b7 SQL \u00b7 glossary",
+      "row": 1,
+      "col": 1,
+      "sources": [
+        {
+          "path": "agent/dbt_state.py",
+          "line": 72,
+          "label": "diff_manifests()"
+        }
+      ],
+      "size": [
+        196,
+        76
+      ]
+    },
+    {
+      "id": "core",
+      "type": "backend",
+      "label": "Blast radius",
+      "sublabel": "deterministic \u00b7 48 tests",
+      "tag": "no LLM here",
+      "row": 1,
+      "col": 2,
+      "sources": [
+        {
+          "path": "agent/blast_radius.py",
+          "line": 67,
+          "label": "assess()"
+        }
+      ],
+      "size": [
+        196,
+        76
+      ]
+    },
+    {
+      "id": "datahub",
+      "type": "database",
+      "label": "DataHub",
+      "sublabel": "lineage \u00b7 queries \u00b7 schema",
+      "tag": "reality",
+      "row": 2,
+      "col": 1,
+      "sources": [
+        {
+          "path": "agent/datahub_client.py",
+          "line": 87,
+          "label": "LiveDataHubClient"
+        }
+      ],
+      "size": [
+        196,
+        76
+      ]
+    },
+    {
+      "id": "contract",
+      "type": "cloud",
+      "label": "Data Contract",
+      "sublabel": "PROPOSED \u00b7 merge approves",
+      "row": 2,
+      "col": 2,
+      "sources": [
+        {
+          "path": "agent/contract.py",
+          "line": 22,
+          "label": "build_contract_input()"
+        }
+      ],
+      "size": [
+        196,
+        76
+      ]
+    },
+    {
+      "id": "agent",
+      "type": "backend",
+      "label": "ADK narrative agent",
+      "sublabel": "via Agent Context Kit",
+      "tag": "narrates only",
+      "row": 0,
+      "col": 3,
+      "sources": [
+        {
+          "path": "agent/adk_agent.py",
+          "line": 173,
+          "label": "enrich_narrative()"
+        }
+      ],
+      "size": [
+        196,
+        76
+      ]
+    },
+    {
+      "id": "codegen",
+      "type": "backend",
+      "label": "Codegen",
+      "sublabel": "compat view + schema tests",
+      "row": 1,
+      "col": 3,
+      "sources": [
+        {
+          "path": "agent/codegen.py",
+          "line": 121,
+          "label": "generate_all()"
+        }
+      ],
+      "size": [
+        196,
+        76
+      ]
+    },
+    {
+      "id": "slack",
+      "type": "external",
+      "label": "Slack alert",
+      "sublabel": "stakeholders, before merge",
+      "row": 2,
+      "col": 3,
+      "sources": [
+        {
+          "path": "agent/pr_comment.py",
+          "line": 287,
+          "label": "notify_slack()"
+        }
+      ],
+      "size": [
+        196,
+        76
+      ]
+    },
+    {
+      "id": "comment",
+      "type": "external",
+      "label": "One PR comment",
+      "sublabel": "verdict \u00b7 owners \u00b7 fix",
+      "row": 1,
+      "col": 4,
+      "sources": [
+        {
+          "path": "agent/pr_comment.py",
+          "line": 17,
+          "label": "render()"
+        }
+      ],
+      "size": [
+        196,
+        76
+      ]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "Consumer's own GitHub Action runner \u2014 no hosted service",
+      "wraps": [
+        "detect",
+        "core",
+        "agent",
+        "codegen"
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "pr-detect",
+      "from": "pr",
+      "to": "detect",
+      "label": "opened",
+      "variant": "emphasis"
+    },
+    {
+      "id": "detect-core",
+      "from": "detect",
+      "to": "core",
+      "variant": "emphasis"
+    },
+    {
+      "id": "datahub-core",
+      "from": "datahub",
+      "to": "core",
+      "label": "who consumes this",
+      "variant": "emphasis"
+    },
+    {
+      "id": "core-contract",
+      "from": "core",
+      "to": "contract"
+    },
+    {
+      "id": "contract-datahub",
+      "from": "contract",
+      "to": "datahub",
+      "variant": "dashed"
+    },
+    {
+      "id": "core-agent",
+      "from": "core",
+      "to": "agent",
+      "label": "facts"
+    },
+    {
+      "id": "core-codegen",
+      "from": "core",
+      "to": "codegen"
+    },
+    {
+      "id": "core-slack",
+      "from": "core",
+      "to": "slack",
+      "label": "HIGH / CRITICAL"
+    },
+    {
+      "id": "agent-comment",
+      "from": "agent",
+      "to": "comment",
+      "label": "impact story"
+    },
+    {
+      "id": "codegen-comment",
+      "from": "codegen",
+      "to": "comment"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "violet",
+      "title": "Two invariants",
+      "items": [
+        "DataHub only ever reflects reality \u2014 the PR's state is never ingested",
+        "The LLM narrates; it never scores and never authors merged code"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Advisory by design",
+      "items": [
+        "Nothing is blocked: data models must evolve",
+        "Owners come from the catalog, so the right people see it before merge"
+      ]
+    }
+  ]
+}
