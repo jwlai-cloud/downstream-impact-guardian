@@ -95,6 +95,23 @@ declared  >  derived  >  worst-case
  (facts)     (roadmap)    (default)
 ```
 
+A late measurement sharpened the middle rung, and not in the direction I
+expected. I had assumed "derived" was merely *unread* — DataHub's dbt source
+sets `include_column_lineage=True` by default, so surely the column edges were
+sitting there waiting. Querying the live instance on 2026-08-04 said otherwise:
+the dbt nodes carry **zero** column edges, and the BigQuery siblings carry only
+identity mappings — `dbt:revenue_daily.gross_revenue →
+bigquery:revenue_daily.gross_revenue`, every column onto itself. The edge the
+rung actually needs, `fct_orders.order_total → revenue_daily.gross_revenue`,
+does not exist anywhere in the catalog.
+
+That flag maps a dbt model onto its warehouse twin; it does not derive
+column flow *between* models. Getting that requires dbt's compiled-SQL column
+info or a warehouse lineage source. So "roadmap" is the honest label for the
+middle rung, and worth stating plainly: had I wired `fineGrainedLineages` into
+the client on the strength of the default-True flag, it would have returned
+nothing and I'd have shipped a rung that silently never fired.
+
 **Declared** is the shipped rung, and my favorite thing in the project.
 A consumer declares which upstream columns it reads, in its own repo:
 

@@ -2,7 +2,53 @@
 
 Running log. Read this first when resuming; update at end of every session.
 
-## Current state (2026-07-27)
+## Current state (2026-08-04)
+
+**Everything is live and the last infrastructure surprise is closed.** Six days
+to the Aug 10 submission deadline; the only remaining blockers are the video
+upload and the Devpost form, both maintainer-side.
+
+Session of 2026-08-04, in order:
+
+- **DataHub survives a restart, proven not inferred.** Starting the instance
+  brought the OS back with all seven containers `Exited (143)`: the quickstart
+  ships **no restart policy**, so "instance running" and "every judge URL dead"
+  were the same state — and Aug 17 would have gone the same way. Fixed by
+  declaring `restart: unless-stopped` in
+  [`scripts/dig-override.yml`](../scripts/dig-override.yml) (in the repo now,
+  not only on the VM, so a rebuild can't reproduce it). A full stop/start cycle
+  then reached both endpoints healthy in **~2 min with zero intervention**;
+  judge token still authenticates, all 10 `fct_orders` entities intact.
+- **Two bring-up cycles were lost to my own error**: `docker compose up -d`
+  needs `--profile quickstart`, and without it starts kafka, **exits 0, and
+  reports success** while nothing serves. That produced two wrong diagnoses
+  (CPU-credit throttling, fail2ban) on a box that was idle at load 0.08. Both
+  traps are now gotchas 5 and 6 in [`AWS_BRINGUP.md`](AWS_BRINGUP.md). One
+  ~25-min SSH blackout remains **unexplained** — cleared by a stop/start, no
+  root cause found; watch for it during judging.
+- **Demo endpoint hardened** (PR #38): hitting a run cap was a dead end, so
+  both 429s now return a `fallback` URL the page renders as a link to the
+  workbench. `DEMO_MAX_RUNS_PER_DAY` failed **open** two ways — a typo gave
+  `NaN` (`today >= NaN` always false, cap silently gone) and `|| 40` turned an
+  explicit `0` into 40 — now fails closed with 503, covered by
+  `api/quota-config.test.mjs`.
+- **The 3-minute wait no longer reads as a hang**: `/api/status` reports the
+  workflow's real step (`step 4/7`) from the Actions jobs API, plus an elapsed
+  clock and an upfront expectation. Also fixed a live-run finding — a commit
+  accumulates one check-run per attempt, so the page could show a judge a
+  **stale failure** for a run that succeeded; `/api/status` now keeps only the
+  newest per name.
+- **The workbench was never stale** (an earlier claim of mine, wrong): all four
+  linked runs are live-mode at 24/11/7/7, matching `JUDGING.md`. Only this
+  repo's dogfood draft #5 was stale, and its re-run now reads live mode,
+  CRITICAL 24, contract upserted.
+- **Column-level lineage: measured, and it killed two earlier framings** — see
+  step 3 below. Not "unread", not a coverage gap: the edges the "derived" rung
+  needs do not exist in this catalog at all.
+- Stale SSH rule (`125.253.50.30/32`, a home IP the ISP has since reassigned)
+  revoked; only the current maintainer IP remains on port 22.
+
+## Earlier state (2026-07-27)
 
 **The judge-facing DataHub is deployed and permanent.** The last piece of
 infrastructure risk is closed: no more ephemeral tunnels, no laptop-must-stay-awake.
@@ -28,38 +74,49 @@ infrastructure risk is closed: no more ephemeral tunnels, no laptop-must-stay-aw
   submission description (the form has no private field), never in this repo.
 
 **Next, in priority order:**
-1. **Start the instance before judging opens (~Aug 16)** — it has been
-   stopped since 2026-07-26 to save ~$1.50/day; the Elastic IP means no
-   secret changes are needed. `aws ec2 start-instances --instance-ids <id>`
-   (id in the maintainer's credentials file), then allow ~4 min for the
-   stack to go healthy.
-2. **Re-trigger the four standing demo PRs once it is up**, including this
-   repo's own dogfooding draft (#5). They currently carry reports from
-   before the permanent instance existed — #5 in particular shows
-   *offline fixture mode, score 22*, which reads as inconsistent next to
-   the live `score 24` in every other artifact. A re-run replaces them
-   with live-mode reports (contracts upserted, Qwen narrative). Deferred
-   deliberately: with the box stopped, a re-run would fail loudly rather
-   than fall back, since a configured-but-unreachable catalog must never
-   silently serve fixture data as live.
-3. **Verify what column-level lineage the instance actually holds** (one query,
-   once it is up). The dbt source emits column lineage by default
-   (`include_column_lineage=True`), so the dbt-internal chain
-   `stg_orders → fct_orders → revenue_daily` probably has it — but
-   `scripts/seed_demo_consumers.py` emits only dataset-level `upstreamLineage`,
-   so the six cross-team consumers almost certainly do **not**. Confirm before
-   describing the "derived" rung anywhere:
+1. ~~Start the instance before judging opens.~~ **DONE 2026-08-04** — running,
+   both endpoints healthy, and restarting is now unattended (~2 min), so it can
+   be stopped again until ~Aug 16 to save ~$18 with no bring-up ritual.
+2. ~~Re-trigger the standing demo PRs.~~ **DONE 2026-08-04.** The four
+   workbench runs turned out **not** to be stale — all live-mode at 24/11/7/7,
+   matching `JUDGING.md`. Only this repo's dogfood draft #5 carried the old
+   *offline fixture, score 22*; its re-run now reads **live mode, CRITICAL 24,
+   contract upserted**, so every artifact agrees.
+3. ~~Verify what column-level lineage the instance actually holds.~~
+   **DONE 2026-08-04 — answered, and the answer changes the claim.** Queried
+   every model on the live instance (GraphQL rejects the `aspects` signature
+   used in the old snippet below; the OpenAPI v3 aspect read works):
 
    ```bash
-   curl -s -X POST "$DATAHUB_GMS_URL/api/graphql" \
-     -H "Authorization: Bearer $DATAHUB_GMS_TOKEN" \
-     -H 'Content-Type: application/json' \
-     -d '{"query":"{ dataset(urn:\"urn:li:dataset:(urn:li:dataPlatform:dbt,agent-era.fiction_retail.revenue_daily,PROD)\") { upstreamLineage { fineGrainedLineages { upstreams downstreams } } } }"}'
+   URN='urn:li:dataset:(urn:li:dataPlatform:bigquery,agent-era.fiction_retail.revenue_daily,PROD)'
+   E=$(python3 -c "import urllib.parse,sys;print(urllib.parse.quote(sys.argv[1],safe=''))" "$URN")
+   curl -s "$DATAHUB_GMS_URL/openapi/v3/entity/dataset/$E?aspects=upstreamLineage" \
+     -H "Authorization: Bearer $DATAHUB_GMS_TOKEN"
    ```
 
-   If those come back populated, the ladder's middle rung is closer than
-   "roadmap" for dbt-internal edges — worth knowing, not worth rushing before
-   the deadline.
+   | Dataset | table upstreams | column edges |
+   |---|---|---|
+   | `dbt:fct_orders` | 2 | **0** |
+   | `dbt:stg_orders` | 1 | **0** |
+   | `dbt:revenue_daily` | 1 | **0** |
+   | `bigquery:fct_orders` | 1 | 8 |
+   | `bigquery:stg_orders` | 1 | 6 |
+   | `bigquery:revenue_daily` | 1 | 4 |
+
+   The dbt nodes hold **no** column edges, and the BigQuery ones hold only
+   **sibling identity mappings** — `dbt:revenue_daily.gross_revenue →
+   bigquery:revenue_daily.gross_revenue`, 4 of 4, every column to itself.
+   There is **no model→model column lineage anywhere in this instance**.
+
+   So `include_column_lineage=True` is real but doesn't mean what it sounds
+   like here: it maps a dbt node onto its warehouse sibling, not
+   `fct_orders.order_total → revenue_daily.gross_revenue`. Reading the
+   "derived" rung today would therefore buy **nothing** — not a coverage gap
+   to be filled by more ingestion, but an absence of the edge type the rung
+   needs. Cross-model column edges would require dbt's own compiled-SQL
+   column info or a BigQuery lineage/usage source. The worst-case bound plus
+   `depends_on_columns` declarations remain the only honest inputs, which is
+   what the shipped precision ladder already does.
 4. Fill the **Devpost form** from [`SUBMISSION.md`](SUBMISSION.md) — the
    Additional-info and Feedback-Prize answers are in its appendix. Note the
    form has **no private free-text field** for credentials, so the judge login
@@ -139,15 +196,19 @@ Done, in order:
 - Which DEPLOY_OPTIONS.md row for the permanent instance — resolve by
   ~2026-08-10 so it soaks before the Aug 17–31 judging window (Hetzner
   recommended; soak-from-Aug-16 trims any paid row ~30%).
-- Column-level lineage (the "derived" rung) is **unread, not unavailable** —
-  DataHub's dbt source emits it by default (`include_column_lineage=True`), but
-  `datahub_client.py` never asks for `fineGrainedLineages`, and
-  `seed_demo_consumers.py` emits dataset-level lineage only, so the six
-  cross-team consumers carry none. The real limitation is *coverage*: in a real
-  data estate the consumers that matter (Looker dashboards, other teams'
-  tables) often emit no column lineage either. Run the query in step 3 to see
-  what this instance actually holds before deciding whether to wire the rung
-  up. (Declared already demonstrates the SAFE verdict live.)
+- ~~Column-level lineage (the "derived" rung) is **unread, not unavailable**.~~
+  **RESOLVED 2026-08-04 by querying the live instance** (table in step 3
+  above). Both earlier framings were wrong: it is not merely "unread", and
+  the limitation is not *coverage*. The dbt nodes hold **zero** column edges;
+  the BigQuery siblings hold only **identity mappings** of each dbt column
+  onto its own warehouse column. No `fct_orders.order_total →
+  revenue_daily.gross_revenue` edge exists anywhere, so wiring
+  `fineGrainedLineages` into `datahub_client.py` would return nothing usable
+  — the rung has no data to stand on, rather than data we declined to read.
+  Cross-model column edges need dbt's compiled-SQL column info or a BigQuery
+  lineage/usage source; neither is in scope before the deadline. The shipped
+  ladder (declared `depends_on_columns` > worst-case bound) is therefore not
+  a shortcut — it is the only honest option available on this instance.
 
 ## Incident log (2026-07-22)
 

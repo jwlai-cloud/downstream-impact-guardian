@@ -54,13 +54,29 @@ export default async function handler(req, res) {
     const guardian = (comments || []).find(
       (c) => c.user && c.user.login === "github-actions[bot]" &&
              (c.body || "").includes(MARKER));
+    // One commit accumulates a check-run per attempt, so re-runs leave older
+    // FAILED entries alongside the newest success. Keep only the most recent
+    // per name -- otherwise the page can show a judge a stale failure for a
+    // run that actually succeeded.
+    const newestByName = new Map();
+    for (const c of checks.check_runs || []) {
+      const prev = newestByName.get(c.name);
+      const at = new Date(c.started_at || 0).getTime();
+      if (!prev || at >= prev.at) {
+        newestByName.set(c.name, {
+          at,
+          check: {
+            name: c.name,
+            status: c.status, // queued | in_progress | completed
+            conclusion: c.conclusion, // success | failure | null
+            url: c.html_url,
+          },
+        });
+      }
+    }
+
     return res.status(200).json({
-      checks: (checks.check_runs || []).map((c) => ({
-        name: c.name,
-        status: c.status,           // queued | in_progress | completed
-        conclusion: c.conclusion,   // success | failure | null
-        url: c.html_url,
-      })),
+      checks: [...newestByName.values()].map((v) => v.check),
       step,
       comment: guardian ? guardian.body : null,
       commentUrl: guardian ? guardian.html_url : null,
