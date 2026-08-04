@@ -17,8 +17,8 @@ models:
         description: Date the order was placed.
       - name: order_status
         description: Lifecycle status of the order.
-      - name: order_total
-        description: Order value in the order currency, tax included.
+      - name: order_amount_usd
+        description: Order value in USD, tax included.
       - name: currency
         description: ISO-4217 currency code.
       - name: is_fulfilled
@@ -31,8 +31,8 @@ models:
         tests: [unique, not_null]
       - name: gross_revenue
         description: >
-          Sum of order_total over all non-cancelled orders placed that day,
-          refunds included.
+          Sum of order_amount_usd over fulfilled (completed or shipped)
+          orders placed that day, refunds excluded.
         config:
           meta:
             business_glossary_term: "Gross Revenue"
