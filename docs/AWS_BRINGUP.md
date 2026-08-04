@@ -150,11 +150,41 @@ Gotchas hit, for anyone repeating this:
    **key-only** corpuser — GMS then can't hydrate the actor and rejects its
    tokens with 401 (`Could not find entity for urn:li:corpuser:judge`).
    Emit a `corpUserInfo` aspect for it before minting tokens.
+5. **`docker compose up -d` needs `--profile quickstart`.** Every service
+   except `kafka-broker` sits behind that profile, so without it compose
+   starts kafka, **exits 0, and reports success** while nothing serves. The
+   `datahub docker quickstart` CLI passes the profile; driving compose
+   directly (gotcha 3) means passing it yourself. Cost us two bring-up cycles
+   chasing phantom resource problems on a box that was idle at load 0.08.
+6. **Quickstart containers ship with no restart policy**, so an EC2
+   stop/start leaves all seven `Exited` and DataHub never returns — the
+   instance is "running" while every judge-facing URL is dead. Declare
+   `restart: unless-stopped` in the override
+   ([`scripts/dig-override.yml`](../scripts/dig-override.yml)) rather than
+   only applying it to live containers with `docker update`, or a stack
+   recreation silently drops it. Verify with
+   `docker inspect --format '{{.Name}} {{.HostConfig.RestartPolicy.Name}}' $(docker ps -aq)`
+   and confirm `systemctl is-enabled docker` — a restart policy is inert if
+   dockerd doesn't start at boot.
 
 ### Operating it
 
 - **Stop when idle** (pre-judging): `aws ec2 stop-instances --instance-ids <id>`
   → billing drops to EBS only (~$0.11/day); the Elastic IP keeps the URL.
+- **Restarting is unattended** (gotcha 6): start the instance and DataHub comes
+  back by itself in ~3–5 min — OpenSearch and MySQL first, GMS last. Nothing to
+  SSH for, and because the Elastic IP survives, no secret, doc URL, or Vercel
+  variable changes. Confirm from anywhere:
+
+  ```bash
+  curl -s -o /dev/null -w 'gms=%{http_code}\n' http://<eip>:8080/health   # want 200
+  curl -s -o /dev/null -w 'ui=%{http_code}\n'  http://<eip>:9002          # want 200
+  ```
+
+  Expect **SSH to fail** after a long gap — port 22 is pinned to the
+  maintainer's IP, which a home ISP reassigns. That blocks only your login, not
+  DataHub; re-add the current address with
+  `aws ec2 authorize-security-group-ingress` and revoke the stale one.
 - **Teardown after Aug 31:** terminate the instance **and release the
   Elastic IP** — an unattached EIP bills ~$3.60/mo. Then delete the
   `dig-ec2-deploy` inline policy to return the IAM user to Bedrock-only.
