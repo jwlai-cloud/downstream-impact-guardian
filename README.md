@@ -59,7 +59,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: jwlai-cloud/downstream-impact-guardian@master
+      - uses: jwlai-cloud/downstream-impact-guardian@v1
         with:
           dbt-project-dir: transforms          # your dbt project path
           datahub-url: ${{ secrets.DATAHUB_GMS_URL }}

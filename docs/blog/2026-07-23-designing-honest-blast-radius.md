@@ -154,7 +154,7 @@ No server anywhere. The agent is a composite GitHub Action; a consumer
 integrates with one block:
 
 ```yaml
-- uses: jwlai-cloud/downstream-impact-guardian@master
+- uses: jwlai-cloud/downstream-impact-guardian@v1
   with:
     dbt-project-dir: dbt
     datahub-url: ${{ secrets.DATAHUB_GMS_URL }}
