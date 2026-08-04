@@ -21,7 +21,15 @@ const STALE_MINUTES = 45;
 // Total runs allowed per rolling 24h, independent of how many are open at once.
 // The access code is published to judges, so it is a courtesy gate, not a
 // bearer secret -- this is the quota that actually bounds cost and PR churn.
-const MAX_RUNS_PER_DAY = Number(process.env.DEMO_MAX_RUNS_PER_DAY || 40);
+// Parsed strictly, because both sloppy readings of this variable fail OPEN:
+// Number("fourty") is NaN and `today >= NaN` is always false (cap gone), and
+// `|| 40` would turn an explicit 0 ("block everything") into 40. An unset or
+// blank value means "use the default"; anything else must be a real count, and
+// a malformed one serves 503 rather than quietly uncapping a paid endpoint.
+const MAX_RUNS_RAW = process.env.DEMO_MAX_RUNS_PER_DAY;
+const MAX_RUNS_PER_DAY =
+  MAX_RUNS_RAW === undefined || MAX_RUNS_RAW.trim() === "" ? 40 : Number(MAX_RUNS_RAW);
+const MAX_RUNS_VALID = Number.isSafeInteger(MAX_RUNS_PER_DAY) && MAX_RUNS_PER_DAY >= 0;
 
 const OWNER = process.env.GH_OWNER || "jwlai-cloud";
 const REPO = process.env.GH_REPO || "fiction-retail-dbt";
@@ -85,6 +93,14 @@ export default async function handler(req, res) {
   if (req.method === "GET") return res.status(200).json({ gated: gateOn() });
   if (req.method !== "POST") return res.status(405).json({ error: "POST only" });
 
+  // Same fail-closed stance as the gate below: a misconfigured cap serves
+  // nobody rather than serving everybody.
+  if (!MAX_RUNS_VALID) {
+    return res.status(503).json({
+      error: `DEMO_MAX_RUNS_PER_DAY is not a valid count (${MAX_RUNS_RAW}) — fix it, or unset it for the default.`,
+    });
+  }
+
   // This endpoint opens real PRs and spends a paid model call per run, so when
   // the gate is on it is fail-closed: gate on with no code set serves nobody
   // (503) rather than defaulting to open.
@@ -108,14 +124,20 @@ export default async function handler(req, res) {
   try {
     const active = await cleanupStale();
     if (active >= MAX_OPEN_RUNS) {
-      return res.status(429).json({ error: "Too many demo runs in flight — try again in a few minutes." });
+      return res.status(429).json({
+        error: "Too many demo runs in flight — try again in a few minutes.",
+        fallback: "https://jwlai-cloud.github.io/downstream-impact-guardian/",
+        fallbackLabel: "Or see the four verified reports now →",
+      });
     }
     const today = await runsInLastDay();
     if (today >= MAX_RUNS_PER_DAY) {
       return res.status(429).json({
-        error:
-          "The demo has hit its daily run limit. The four verified reports at " +
-          "jwlai-cloud.github.io/downstream-impact-guardian need no setup and show the same output.",
+        error: "The demo has hit its daily run limit.",
+        // The UI turns this into a real link, so the visitor still has
+        // somewhere useful to go instead of a dead end.
+        fallback: "https://jwlai-cloud.github.io/downstream-impact-guardian/",
+        fallbackLabel: "See the four verified reports instead →",
       });
     }
     const src = await gh(`/git/ref/heads/${encodeURIComponent(scenario.branch)}`);
