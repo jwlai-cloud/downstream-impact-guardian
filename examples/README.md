@@ -30,9 +30,22 @@ The `generated/` run used offline fixture mode (see ADR-0007) — exactly
 what a secrets-less fork PR produces, and the richer narrative since the
 fixtures carry dashboards and observed queries.
 
-`live-run/` is evidence from the same pipeline against a **real self-hosted
-OSS DataHub** (2026-07-15): real lineage traversal, and a real
-`upsertDataContract` — the contract urn in that comment exists in the
-instance with `state: PENDING` and guardian provenance, verified via the
-OpenAPI endpoint. Live lineage there has no Looker/query usage ingested
-yet, which is why its blast radius is smaller than the fixture story.
+`live-run/` is evidence from the same pipeline against the **real self-hosted
+OSS DataHub** instance, refreshed 2026-08-04 from the run on this repo's own
+`demo/breaking-change` PR (the project dogfoods its own action):
+
+- `live-run/comment.md` — 🔴 **CRITICAL (score 24)**, with the blast radius
+  read from live lineage: six cross-system consumers across three teams,
+  including two **Looker dashboards** and three BigQuery datasets, plus the
+  **two observed production queries** that still reference `order_total` —
+  guaranteed breakage, not inferred. Both Data Contracts written back as
+  **PROPOSED** (`urn:li:dataContract:b2ad38e5…`, `…b77b9bb4…`).
+- `live-run/contract_payloads.json` — the contract payloads as emitted. Note
+  the provenance: these are from the 2026-07-15 run, kept because the payload
+  *shape* is what they illustrate; the urns in the current `comment.md` come
+  from the newer run.
+
+An earlier snapshot of this file showed 🟠 HIGH (score 8) with a single
+consumer, because that instance predated seeding the cross-team consumers. It
+was replaced rather than kept, so every artifact in this repo now agrees on the
+same verdict — the workbench, the video, `docs/SUBMISSION.md`, and this folder.

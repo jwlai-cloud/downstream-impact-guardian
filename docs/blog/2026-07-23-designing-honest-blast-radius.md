@@ -103,14 +103,20 @@ the dbt nodes carry **zero** column edges, and the BigQuery siblings carry only
 identity mappings — `dbt:revenue_daily.gross_revenue →
 bigquery:revenue_daily.gross_revenue`, every column onto itself. The edge the
 rung actually needs, `fct_orders.order_total → revenue_daily.gross_revenue`,
-does not exist anywhere in the catalog.
+is absent from every entity in this instance.
 
-That flag maps a dbt model onto its warehouse twin; it does not derive
-column flow *between* models. Getting that requires dbt's compiled-SQL column
-info or a warehouse lineage source. So "roadmap" is the honest label for the
-middle rung, and worth stating plainly: had I wired `fineGrainedLineages` into
-the client on the strength of the default-True flag, it would have returned
-nothing and I'd have shipped a rung that silently never fired.
+To be precise about scope, because this is easy to overstate: **DataHub models
+and renders column-level lineage perfectly well** — it's visible in the UI for
+sources that emit it. The gap is in *this* ingestion path. On dbt + BigQuery,
+that default-True flag produced sibling mapping (a dbt model onto its warehouse
+twin) rather than column flow *between* models. Getting the latter needs dbt's
+compiled-SQL column info or a warehouse lineage source.
+
+So "roadmap" is the honest label for the middle rung — a statement about my
+pipeline, not about the catalog's capabilities. Worth stating plainly: had I
+wired `fineGrainedLineages` into the client on the strength of the flag's name,
+it would have returned nothing and I'd have shipped a rung that silently never
+fired.
 
 **Declared** is the shipped rung, and my favorite thing in the project.
 A consumer declares which upstream columns it reads, in its own repo:
