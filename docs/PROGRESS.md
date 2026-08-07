@@ -202,9 +202,13 @@ Done, in order:
   the limitation is not *coverage*. The dbt nodes hold **zero** column edges;
   the BigQuery siblings hold only **identity mappings** of each dbt column
   onto its own warehouse column. No `fct_orders.order_total →
-  revenue_daily.gross_revenue` edge exists anywhere, so wiring
+  revenue_daily.gross_revenue` edge exists on any entity here, so wiring
   `fineGrainedLineages` into `datahub_client.py` would return nothing usable
   — the rung has no data to stand on, rather than data we declined to read.
+  **Scope this claim carefully when repeating it:** DataHub models and renders
+  column-level lineage fine (the hackathon kickoff demo shows it in the UI for
+  sample datasets). The gap is *this* dbt + BigQuery ingestion path, not the
+  product.
   Cross-model column edges need dbt's compiled-SQL column info or a BigQuery
   lineage/usage source; neither is in scope before the deadline. The shipped
   ladder (declared `depends_on_columns` > worst-case bound) is therefore not
